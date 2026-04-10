@@ -6,12 +6,12 @@ using Fantasy.Async;
 namespace Entities.Redis
 {
     /// <summary>
-    /// Redis 异常处理辅助类
+    /// Helper methods for handling Redis-related exceptions.
     /// </summary>
     public static class RedisExceptionHelper
     {
         /// <summary>
-        /// 处理 Redis 异常
+        /// Handles a Redis exception and returns whether the operation may be retried.
         /// </summary>
         public static bool HandleException(Exception? exception, string operation, string? key = null)
         {
@@ -23,25 +23,25 @@ namespace Entities.Redis
             var errorMessage = exception.Message;
             var keyInfo = string.IsNullOrEmpty(key) ? "" : $" key={key}";
 
-            // 根据异常类型决定如何处理
+            // Decide how to handle the error based on the exception category.
             switch (exception)
             {
                 case TimeoutException:
                     Log.Warning($"Redis {operation} timeout{keyInfo}: {errorMessage}");
-                    return true; // 可重试
+                    return true; // Retry is allowed.
 
                 case ObjectDisposedException:
                     Log.Error($"Redis {operation} failed, client is disposed{keyInfo}");
-                    return false; // 不可重试
+                    return false; // Retry is not allowed.
 
                 default:
                     Log.Error($"Redis {operation} failed{keyInfo}: {errorMessage}");
-                    return true; // 默认可重试
+                    return true; // Retry by default.
             }
         }
 
         /// <summary>
-        /// 判断是否为连接相关异常
+        /// Determines whether the exception is related to connectivity.
         /// </summary>
         public static bool IsConnectionException(Exception? exception)
         {
@@ -60,7 +60,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 判断是否为可重试异常
+        /// Determines whether the exception is safe to retry.
         /// </summary>
         public static bool IsRetryable(Exception? exception)
         {
@@ -74,7 +74,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取友好的错误消息
+        /// Returns a user-friendly Redis error message.
         /// </summary>
         public static string GetFriendlyMessage(Exception? exception)
         {
@@ -97,7 +97,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 安全执行 Redis 操作，捕获并记录异常
+        /// Executes a Redis operation safely and logs any exception.
         /// </summary>
         public static async FTask<T?> SafeExecuteAsync<T>(Func<FTask<T>> operation, string operationName, string? key = null, T? defaultValue = default)
         {
@@ -113,7 +113,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 安全执行 Redis 操作（无返回值）
+        /// Executes a Redis operation safely when no return value is required.
         /// </summary>
         public static async FTask SafeExecuteAsync(Func<FTask> operation, string operationName, string? key = null)
         {
@@ -128,7 +128,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 带重试的安全执行
+        /// Executes a Redis operation safely with retry support.
         /// </summary>
         public static async FTask<T?> SafeExecuteWithRetryAsync<T>(
             Func<FTask<T>> operation,
@@ -168,7 +168,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 带重试的安全执行（无返回值）
+        /// Executes a Redis operation safely with retry support and no return value.
         /// </summary>
         public static async FTask SafeExecuteWithRetryAsync(
             Func<FTask> operation,
@@ -208,32 +208,32 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Redis 操作结果
+    /// Result wrapper for Redis operations.
     /// </summary>
     public sealed class RedisResult<T>
     {
         /// <summary>
-        /// 是否成功
+        /// Gets or sets whether the operation completed successfully.
         /// </summary>
         public bool IsSuccess { get; set; }
 
         /// <summary>
-        /// 结果值
+        /// Gets or sets the operation result value.
         /// </summary>
         public T? Value { get; set; }
 
         /// <summary>
-        /// 错误信息
+        /// Gets or sets the error message.
         /// </summary>
         public string? Error { get; set; }
 
         /// <summary>
-        /// 异常对象
+        /// Gets or sets the captured exception instance.
         /// </summary>
         public Exception? Exception { get; set; }
 
         /// <summary>
-        /// 创建成功结果
+        /// Creates a successful result.
         /// </summary>
         public static RedisResult<T> Success(T value)
         {
@@ -245,7 +245,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 创建失败结果
+        /// Creates a failed result.
         /// </summary>
         public static RedisResult<T> Failure(string error, Exception? exception = null)
         {
@@ -259,32 +259,32 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Redis 健康检查结果
+    /// Result model for a Redis health check.
     /// </summary>
     public sealed class RedisHealthCheck
     {
         /// <summary>
-        /// 是否健康
+        /// Gets or sets whether Redis is healthy.
         /// </summary>
         public bool IsHealthy { get; set; }
 
         /// <summary>
-        /// 响应时间（毫秒）
+        /// Gets or sets the response time in milliseconds.
         /// </summary>
         public long ResponseTimeMs { get; set; }
 
         /// <summary>
-        /// 错误信息
+        /// Gets or sets the health check error message.
         /// </summary>
         public string? Error { get; set; }
 
         /// <summary>
-        /// 检查时间
+        /// Gets or sets when the health check was performed.
         /// </summary>
         public DateTime CheckTime { get; set; } = DateTime.UtcNow;
 
         /// <summary>
-        /// 创建健康结果
+        /// Creates a healthy result.
         /// </summary>
         public static RedisHealthCheck Healthy(long responseTimeMs)
         {
@@ -296,7 +296,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 创建不健康结果
+        /// Creates an unhealthy result.
         /// </summary>
         public static RedisHealthCheck Unhealthy(string error)
         {

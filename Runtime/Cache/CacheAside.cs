@@ -9,13 +9,13 @@ using Fantasy.Entitas;
 namespace Entities.Redis
 {
     /// <summary>
-    /// Cache-Aside 模式缓存实现
-    /// 使用流程:
-    /// 1. 先查缓存
-    /// 2. 缓存命中则返回
-    /// 3. 缓存未命中则查数据库
-    /// 4. 将数据库结果写入缓存
-    /// 5. 返回结果
+    /// Cache-Aside implementation.
+    /// Workflow:
+    /// 1. Read from cache first.
+    /// 2. Return immediately on a cache hit.
+    /// 3. Load from the backing source on a miss.
+    /// 4. Write the loaded value back to cache.
+    /// 5. Return the resulting value.
     /// </summary>
     public sealed class CacheAside : ICacheStore, IEntityCacheStore
     {
@@ -25,12 +25,12 @@ namespace Entities.Redis
         private readonly CacheStatistics _statistics;
 
         /// <summary>
-        /// 缓存统计信息
+        /// Gets runtime cache statistics.
         /// </summary>
         public CacheStatistics Statistics => _statistics;
 
         /// <summary>
-        /// 创建 Cache-Aside 缓存实例
+        /// Creates a Cache-Aside cache instance.
         /// </summary>
         public CacheAside(RedisCacheComponent redisCache, CacheOptions? options = null)
         {
@@ -41,7 +41,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 创建 Cache-Aside 缓存实例（自定义键前缀）
+        /// Creates a Cache-Aside cache instance with a custom key prefix.
         /// </summary>
         public CacheAside(RedisCacheComponent redisCache, string prefix, CacheOptions? options = null)
             : this(redisCache, options)
@@ -96,11 +96,11 @@ namespace Entities.Redis
             {
                 var effectiveExpiry = expiry ?? _options.DefaultExpiry;
 
-                // 如果启用了空值缓存，且值为 null
+                // Store a null placeholder when null-value caching is enabled.
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
                 if (value == null && _options.CacheNullValues)
                 {
-                    // 缓存一个特殊标记表示空值
+                    // Cache a dedicated marker to represent a null payload.
                     await _redisCache.SetAsync(key, new NullValuePlaceholder(), effectiveExpiry);
                     _statistics.SetCount++;
                     return;
@@ -291,12 +291,12 @@ namespace Entities.Redis
         {
             var key = _keyBuilder.Entity<T>(id);
 
-            // 先查缓存
+            // Read from cache first.
             var cached = await GetAsync<T>(key);
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (cached != null)
             {
-                // 检查是否是空值占位符
+                // Check whether the cached value is the null placeholder.
                 // ReSharper disable once SuspiciousTypeConversion.Global
                 if (cached is NullValuePlaceholder)
                 {
@@ -306,7 +306,7 @@ namespace Entities.Redis
                 return cached;
             }
 
-            // 缓存未命中，从数据源加载
+            // Cache miss: load the value from the backing source.
             try
             {
                 var entity = await loader();
@@ -314,12 +314,12 @@ namespace Entities.Redis
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
                 if (entity == null && _options.CacheNullValues)
                 {
-                    // 缓存空值，防止缓存穿透
+                    // Cache the null placeholder to reduce cache penetration.
                     await SetAsync<T>(key, null, cacheDuration ?? _options.NullValueExpiry);
                 }
                 else if (entity != null)
                 {
-                    // 写入缓存
+                    // Cache the loaded entity.
                     await SetAsync(key, entity, cacheDuration ?? _options.DefaultExpiry);
                 }
 
@@ -337,16 +337,16 @@ namespace Entities.Redis
         #region Extension Methods
 
         /// <summary>
-        /// 获取或加载（泛型）
+        /// Gets a cached value or loads it through the provided factory.
         /// </summary>
         public async FTask<T> GetOrLoadAsync<T>(string key, Func<FTask<T>> loader, TimeSpan? cacheDuration = null) where T : class
         {
-            // 先查缓存
+            // Read from cache first.
             var cached = await GetAsync<T>(key);
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (cached != null)
             {
-                // 检查是否是空值占位符
+                // Check whether the cached value is the null placeholder.
                 if (cached is NullValuePlaceholder)
                 {
                     return null;
@@ -355,7 +355,7 @@ namespace Entities.Redis
                 return cached;
             }
 
-            // 缓存未命中，从数据源加载
+            // Cache miss: load the value from the backing source.
             try
             {
                 var value = await loader();
@@ -363,12 +363,12 @@ namespace Entities.Redis
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
                 if (value == null && _options.CacheNullValues)
                 {
-                    // 缓存空值，防止缓存穿透
+                    // Cache the null placeholder to reduce cache penetration.
                     await SetAsync<T>(key, null, cacheDuration ?? _options.NullValueExpiry);
                 }
                 else if (value != null)
                 {
-                    // 写入缓存
+                    // Cache the loaded value.
                     await SetAsync(key, value, cacheDuration ?? _options.DefaultExpiry);
                 }
 
@@ -382,11 +382,11 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取或加载（带分布式锁，防止缓存击穿）
+        /// Gets a cached value or loads it under a distributed lock to reduce cache breakdown.
         /// </summary>
         public async FTask<T> GetOrLoadWithLockAsync<T>(string key, Func<FTask<T>> loader, TimeSpan? cacheDuration = null, TimeSpan? lockTimeout = null) where T : class
         {
-            // 先查缓存
+            // Read from cache first.
             var cached = await GetAsync<T>(key);
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (cached != null)
@@ -399,7 +399,7 @@ namespace Entities.Redis
                 return cached;
             }
 
-            // 使用分布式锁防止缓存击穿
+            // Use a distributed lock to prevent multiple loaders from rebuilding the same key.
             var lockKey = _keyBuilder.Lock($"load:{key}");
 
             await using var @lock = await _redisCache.AcquireLockAsync(
@@ -409,11 +409,11 @@ namespace Entities.Redis
 
             if (@lock == null)
             {
-                // 获取锁失败，直接从数据源加载
+                // Fall back to the loader when the lock cannot be acquired.
                 return await loader();
             }
 
-            // 获取锁成功，再次检查缓存（double-check）
+            // Double-check the cache after the lock has been acquired.
             cached = await GetAsync<T>(key);
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (cached != null)
@@ -426,7 +426,7 @@ namespace Entities.Redis
                 return cached;
             }
 
-            // 从数据源加载
+            // Load from the backing source.
             try
             {
                 var value = await loader();
@@ -451,7 +451,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 刷新缓存（删除）
+        /// Invalidates the specified cache keys.
         /// </summary>
         public async FTask InvalidateAsync(params string[] keys)
         {
@@ -459,7 +459,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 刷新实体缓存
+        /// Invalidates the cache entry for a specific entity.
         /// </summary>
         public async FTask InvalidateEntityAsync<T>(long id) where T : Entity
         {
@@ -467,7 +467,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 刷新类型下的所有缓存
+        /// Invalidates all cache entries for a given entity type.
         /// </summary>
         public async FTask InvalidateTypeAsync<T>() where T : class
         {
@@ -476,7 +476,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 预热缓存
+        /// Warms up cache entries for the provided entity identifiers.
         /// </summary>
         public async FTask WarmUpAsync<T>(IEnumerable<long> ids, Func<long, FTask<T>> loader) where T : Entity
         {
@@ -504,7 +504,7 @@ namespace Entities.Redis
         #region Null Value Placeholder
 
         /// <summary>
-        /// 空值占位符，用于防止缓存穿透
+        /// Placeholder used to represent null values and reduce cache penetration.
         /// </summary>
         private sealed class NullValuePlaceholder
         {
@@ -514,12 +514,12 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Scene 扩展方法，提供便捷的缓存操作
+    /// Scene extension methods that provide convenient cache helpers.
     /// </summary>
     public static class SceneCacheExtensions
     {
         /// <summary>
-        /// 获取或加载实体（优先缓存）
+        /// Gets a value from cache first, then falls back to the backing source.
         /// </summary>
         public static async FTask<T> GetOrFetchAsync<T>(
             this Scene scene,
@@ -533,7 +533,7 @@ namespace Entities.Redis
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (cache == null)
             {
-                // Redis 不可用，直接从数据库获取
+                // Fall back to the source directly when Redis is unavailable.
                 return await fetchFromDb();
             }
 
@@ -542,7 +542,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取或加载实体（优先缓存，使用实体类型作为键前缀）
+        /// Gets an entity from cache first using the entity type as the key prefix.
         /// </summary>
         public static async FTask<T> GetOrFetchAsync<T>(
             this Scene scene,
@@ -567,7 +567,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 刷新实体缓存
+        /// Invalidates the cache entry for a specific entity.
         /// </summary>
         public static async FTask InvalidateCacheAsync<T>(this Scene scene, long entityId) where T : Entity
         {
@@ -586,7 +586,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 使用分布式锁执行操作
+        /// Executes an operation under a distributed lock.
         /// </summary>
         public static async FTask WithDistributedLockAsync(
             this Scene scene,
@@ -600,7 +600,7 @@ namespace Entities.Redis
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (cache == null)
             {
-                // Redis 不可用，直接执行操作
+                // Execute directly when Redis is unavailable.
                 await action();
                 return;
             }
@@ -619,7 +619,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 使用分布式锁执行操作（带返回值）
+        /// Executes a function under a distributed lock and returns its result.
         /// </summary>
         public static async FTask<T> WithDistributedLockAsync<T>(
             this Scene scene,
@@ -650,7 +650,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 发布跨服务器消息
+        /// Publishes a cross-server message.
         /// </summary>
         public static async FTask PublishMessageAsync(
             this Scene scene,
@@ -671,7 +671,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 订阅跨服务器消息
+        /// Subscribes to a cross-server message channel.
         /// </summary>
         public static async FTask<RedisSubscription> SubscribeMessageAsync(
             this Scene scene,

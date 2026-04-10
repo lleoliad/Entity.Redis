@@ -8,7 +8,7 @@ using FreeRedis;
 namespace Entities.Redis
 {
     /// <summary>
-    /// Redis 订阅，支持发布订阅模式
+    /// Represents a Redis pub/sub subscription.
     /// </summary>
     public sealed class RedisSubscription : IDisposable
     {
@@ -19,17 +19,17 @@ namespace Entities.Redis
         private bool _isDisposed;
 
         /// <summary>
-        /// 订阅的频道
+        /// Gets the subscribed channel.
         /// </summary>
         public string Channel => _channel;
 
         /// <summary>
-        /// 是否已订阅
+        /// Gets whether the subscription is active.
         /// </summary>
         public bool IsSubscribed { get; private set; }
 
         /// <summary>
-        /// 创建 Redis 订阅实例
+        /// Creates a Redis subscription instance.
         /// </summary>
         internal RedisSubscription(RedisDatabase redisDatabase, string channel, Action<string, byte[]> handler)
         {
@@ -55,7 +55,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 订阅频道（内部方法）
+        /// Marks the channel as subscribed.
         /// </summary>
         internal async FTask SubscribeAsync()
         {
@@ -70,7 +70,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 取消订阅
+        /// Cancels the subscription.
         /// </summary>
         public async FTask UnsubscribeAsync()
         {
@@ -83,7 +83,7 @@ namespace Entities.Redis
             {
                 var redisClient = _redisDatabase.GetRedisClient();
 
-                // FreeRedis 会自动处理取消订阅
+                // FreeRedis handles the unsubscribe mechanics through disposal.
                 _subscription.Dispose();
 
                 IsSubscribed = false;
@@ -97,7 +97,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 发布消息到当前订阅的频道
+        /// Publishes a binary message to the current channel.
         /// </summary>
         public async FTask<long> PublishAsync(byte[] message)
         {
@@ -120,7 +120,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 发布消息到当前订阅的频道（字符串）
+        /// Publishes a UTF-8 string message to the current channel.
         /// </summary>
         public async FTask<long> PublishAsync(string message)
         {
@@ -128,7 +128,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 释放资源
+        /// Releases the subscription resources.
         /// </summary>
         public void Dispose()
         {
@@ -149,7 +149,7 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Redis 模式订阅（支持通配符）
+    /// Represents a Redis pattern subscription with wildcard support.
     /// </summary>
     public sealed class RedisPatternSubscription : IDisposable
     {
@@ -161,17 +161,17 @@ namespace Entities.Redis
         private bool _isDisposed;
 
         /// <summary>
-        /// 订阅的模式
+        /// Gets the subscribed pattern.
         /// </summary>
         public string Pattern => _pattern;
 
         /// <summary>
-        /// 是否已订阅
+        /// Gets whether the pattern subscription is active.
         /// </summary>
         public bool IsSubscribed { get; private set; }
 
         /// <summary>
-        /// 创建 Redis 模式订阅实例
+        /// Creates a Redis pattern subscription instance.
         /// </summary>
         internal RedisPatternSubscription(RedisDatabase redisDatabase, string pattern, Action<string, object> handler)
         {
@@ -197,7 +197,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 取消订阅
+        /// Cancels the pattern subscription.
         /// </summary>
         public async FTask UnsubscribeAsync()
         {
@@ -208,7 +208,7 @@ namespace Entities.Redis
 
             try
             {
-                // FreeRedis 会自动处理取消订阅
+                // FreeRedis handles the unsubscribe mechanics through disposal.
                 _subscription.Dispose();
 
                 IsSubscribed = false;
@@ -222,7 +222,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 释放资源
+        /// Releases the pattern subscription resources.
         /// </summary>
         public void Dispose()
         {
@@ -243,7 +243,7 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Redis 消息总线，用于跨服务器消息传递
+    /// Lightweight Redis message bus for cross-server communication.
     /// </summary>
     public sealed class RedisMessageBus : IDisposable
     {
@@ -252,7 +252,7 @@ namespace Entities.Redis
         private bool _isDisposed;
 
         /// <summary>
-        /// 创建 Redis 消息总线
+        /// Creates a Redis message bus.
         /// </summary>
         public RedisMessageBus(RedisDatabase redisDatabase, string prefix = "fantasy:bus:")
         {
@@ -262,7 +262,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 发布消息到指定主题
+        /// Publishes a message to the specified topic.
         /// </summary>
         public async FTask<long> PublishAsync<T>(string topic, T message) where T : class
         {
@@ -288,7 +288,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 订阅指定主题
+        /// Subscribes to a specific topic.
         /// </summary>
         public RedisSubscription Subscribe<T>(string topic, Action<string, T> handler) where T : class
         {
@@ -317,7 +317,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 订阅匹配模式的所有主题
+        /// Subscribes to all topics that match the specified pattern.
         /// </summary>
         public RedisPatternSubscription SubscribePattern<T>(string pattern, Action<string, T> handler) where T : class
         {
@@ -335,7 +335,7 @@ namespace Entities.Redis
                     var message = MemoryPack.MemoryPackSerializer.Deserialize<T>((byte[]) typeof (byte[]).FromObject(msg));
                     if (message != null)
                     {
-                        // 移除前缀，只返回原始主题名
+                        // Remove the internal prefix and expose only the logical topic name.
                         var topic = ch.StartsWith(_prefix) ? ch.Substring(_prefix.Length) : ch;
                         handler(topic, message);
                     }
@@ -348,11 +348,11 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 释放资源
+        /// Releases message bus resources.
         /// </summary>
         public void Dispose()
         {
-            // FreeRedis 会自动清理订阅
+            // FreeRedis automatically cleans up subscriptions during disposal.
         }
     }
 }

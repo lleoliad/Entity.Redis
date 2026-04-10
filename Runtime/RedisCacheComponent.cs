@@ -12,7 +12,7 @@ using Fantasy.Platform.Net;
 namespace Entities.Redis
 {
     /// <summary>
-    /// Redis 缓存组件，挂载在 Scene 上，提供缓存操作功能
+    /// Scene-level Redis cache component that exposes cache and pub/sub operations.
     /// </summary>
     public sealed class RedisCacheComponent : Entity
     {
@@ -66,7 +66,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 初始化 Redis 缓存组件
+        /// Initializes the Redis cache component with an existing database instance.
         /// </summary>
         internal RedisCacheComponent Initialize(RedisDatabase redisDatabase, DatabaseConfig databaseConfig)
         {
@@ -78,7 +78,7 @@ namespace Entities.Redis
         #region Basic Cache Operations
 
         /// <summary>
-        /// 获取缓存数据
+        /// Gets a cached value.
         /// </summary>
         public async FTask<T> GetAsync<T>(string key) where T : class
         {
@@ -93,7 +93,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 设置缓存数据
+        /// Stores a value in Redis.
         /// </summary>
         public async FTask SetAsync<T>(string key, T value, TimeSpan? expiry = null) where T : class
         {
@@ -108,7 +108,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 删除缓存数据
+        /// Deletes one or more cached keys.
         /// </summary>
         public async FTask<long> DeleteAsync(params string[] keys)
         {
@@ -123,7 +123,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 检查键是否存在
+        /// Checks whether a key exists.
         /// </summary>
         public async FTask<bool> ExistsAsync(string key)
         {
@@ -138,7 +138,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 设置过期时间
+        /// Sets the expiration for a key.
         /// </summary>
         public async FTask<bool> ExpireAsync(string key, TimeSpan expire)
         {
@@ -153,7 +153,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取剩余过期时间（秒）
+        /// Gets the remaining TTL in seconds.
         /// </summary>
         public async FTask<long> TtlAsync(string key)
         {
@@ -172,7 +172,7 @@ namespace Entities.Redis
         #region String Operations
 
         /// <summary>
-        /// 自增操作
+        /// Increments a numeric value.
         /// </summary>
         public async FTask<long> IncrByAsync(string key, long value = 1)
         {
@@ -187,7 +187,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 自减操作
+        /// Decrements a numeric value.
         /// </summary>
         public async FTask<long> DecrByAsync(string key, long value = 1)
         {
@@ -202,7 +202,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 字符串追加
+        /// Appends content to a string value.
         /// </summary>
         public async FTask<long> AppendAsync(string key, string value)
         {
@@ -217,7 +217,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取字符串长度
+        /// Gets the length of a string value.
         /// </summary>
         public async FTask<long> StrLenAsync(string key)
         {
@@ -236,7 +236,7 @@ namespace Entities.Redis
         #region Hash Operations
 
         /// <summary>
-        /// 设置 Hash 字段
+        /// Sets a Redis hash field.
         /// </summary>
         public async FTask<bool> HSetAsync<T>(string key, string field, T value) where T : class
         {
@@ -251,7 +251,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取 Hash 字段
+        /// Gets a Redis hash field.
         /// </summary>
         public async FTask<T> HGetAsync<T>(string key, string field) where T : class
         {
@@ -266,7 +266,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 删除 Hash 字段
+        /// Deletes one or more Redis hash fields.
         /// </summary>
         public async FTask<long> HDelAsync(string key, params string[] fields)
         {
@@ -281,7 +281,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 检查 Hash 字段是否存在
+        /// Checks whether a Redis hash field exists.
         /// </summary>
         public async FTask<bool> HExistsAsync(string key, string field)
         {
@@ -296,7 +296,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取所有 Hash 字段
+        /// Gets all field names from a Redis hash.
         /// </summary>
         public async FTask<string[]> HKeysAsync(string key)
         {
@@ -311,7 +311,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取 Hash 字段数量
+        /// Gets the number of fields in a Redis hash.
         /// </summary>
         public async FTask<long> HLenAsync(string key)
         {
@@ -330,7 +330,7 @@ namespace Entities.Redis
         #region List Operations
 
         /// <summary>
-        /// 从列表左侧推入值
+        /// Pushes a value to the left side of a list.
         /// </summary>
         public async FTask<long> LPushAsync<T>(string key, T value) where T : class
         {
@@ -345,7 +345,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 从列表右侧推入值
+        /// Pushes a value to the right side of a list.
         /// </summary>
         public async FTask<long> RPushAsync<T>(string key, T value) where T : class
         {
@@ -360,7 +360,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 从列表左侧弹出值
+        /// Pops a value from the left side of a list.
         /// </summary>
         public async FTask<T> LPopAsync<T>(string key) where T : class
         {
@@ -375,7 +375,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 从列表右侧弹出值
+        /// Pops a value from the right side of a list.
         /// </summary>
         public async FTask<T> RPopAsync<T>(string key) where T : class
         {
@@ -390,7 +390,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取列表长度
+        /// Gets the length of a list.
         /// </summary>
         public async FTask<long> LLenAsync(string key)
         {
@@ -405,7 +405,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取列表指定范围的元素
+        /// Gets a range of values from a list.
         /// </summary>
         public async FTask<List<T>> LRangeAsync<T>(string key, long start = 0, long stop = -1) where T : class
         {
@@ -424,7 +424,7 @@ namespace Entities.Redis
         #region Set Operations
 
         /// <summary>
-        /// 向集合添加成员
+        /// Adds a member to a set.
         /// </summary>
         public async FTask<long> SAddAsync<T>(string key, T value) where T : class
         {
@@ -439,7 +439,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取集合所有成员
+        /// Gets all members of a set.
         /// </summary>
         public async FTask<List<T>> SMembersAsync<T>(string key) where T : class
         {
@@ -454,7 +454,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 移除集合成员
+        /// Removes a member from a set.
         /// </summary>
         public async FTask<long> SRemAsync<T>(string key, T value) where T : class
         {
@@ -469,7 +469,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 判断成员是否在集合中
+        /// Checks whether a value is a set member.
         /// </summary>
         public async FTask<bool> SIsMemberAsync<T>(string key, T value) where T : class
         {
@@ -484,7 +484,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取集合成员数
+        /// Gets the number of members in a set.
         /// </summary>
         public async FTask<long> SCardAsync(string key)
         {
@@ -503,7 +503,7 @@ namespace Entities.Redis
         #region Sorted Set Operations
 
         /// <summary>
-        /// 向有序集合添加成员
+        /// Adds a member to a sorted set.
         /// </summary>
         public async FTask<bool> ZAddAsync<T>(string key, T value, double score) where T : class
         {
@@ -518,7 +518,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取有序集合指定范围的成员
+        /// Gets a range of members from a sorted set.
         /// </summary>
         public async FTask<List<T>> ZRangeAsync<T>(string key, long start = 0, long stop = -1) where T : class
         {
@@ -533,7 +533,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取有序集合指定分数范围的成员
+        /// Gets members from a sorted set within a score range.
         /// </summary>
         public async FTask<List<T>> ZRangeByScoreAsync<T>(string key, double min, double max) where T : class
         {
@@ -548,7 +548,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 移除有序集合成员
+        /// Removes a member from a sorted set.
         /// </summary>
         public async FTask<long> ZRemAsync<T>(string key, T value) where T : class
         {
@@ -563,7 +563,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取有序集合成员数
+        /// Gets the number of members in a sorted set.
         /// </summary>
         public async FTask<long> ZCardAsync(string key)
         {
@@ -578,7 +578,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取成员的分数
+        /// Gets the score of a sorted-set member.
         /// </summary>
         public async FTask<double> ZScoreAsync<T>(string key, T value) where T : class
         {
@@ -593,7 +593,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 增加成员的分数
+        /// Increments the score of a sorted-set member.
         /// </summary>
         public async FTask<double> ZIncrByAsync<T>(string key, T value, double increment) where T : class
         {
@@ -612,7 +612,7 @@ namespace Entities.Redis
         #region Distributed Lock
 
         /// <summary>
-        /// 获取分布式锁
+        /// Acquires a distributed Redis lock.
         /// </summary>
         public async FTask<RedisDistributedLock?> AcquireLockAsync(string lockKey, TimeSpan expiry, TimeSpan? retryTimeout = null)
         {
@@ -631,7 +631,7 @@ namespace Entities.Redis
         #region Pub/Sub
 
         /// <summary>
-        /// 发布消息
+        /// Publishes a UTF-8 message to a channel.
         /// </summary>
         public async FTask<long> PublishAsync(string channel, string message)
         {
@@ -646,7 +646,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 发布消息（字节）
+        /// Publishes a binary message to a channel.
         /// </summary>
         public async FTask<long> PublishAsync(string channel, byte[] message)
         {
@@ -670,7 +670,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 订阅频道
+        /// Subscribes to a channel and decodes messages as UTF-8 strings.
         /// </summary>
         public async FTask<RedisSubscription> SubscribeAsync(string channel, Action<string, string> handler)
         {
@@ -689,7 +689,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 订阅频道（字节）
+        /// Subscribes to a channel with raw binary messages.
         /// </summary>
         public async FTask<RedisSubscription> SubscribeBytesAsync(string channel, Action<string, byte[]> handler)
         {
@@ -707,7 +707,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 取消订阅频道
+        /// Unsubscribes from a specific channel.
         /// </summary>
         public async FTask UnsubscribeAsync(string channel)
         {
@@ -718,7 +718,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 取消所有订阅
+        /// Unsubscribes from every tracked channel.
         /// </summary>
         public async FTask UnsubscribeAllAsync()
         {
@@ -735,7 +735,7 @@ namespace Entities.Redis
         #region Pattern-based Operations
 
         /// <summary>
-        /// 根据模式获取键列表
+        /// Returns keys that match the specified pattern.
         /// </summary>
         public async FTask<List<string>> KeysAsync(string pattern)
         {
@@ -760,7 +760,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 根据模式删除键
+        /// Deletes all keys that match the specified pattern.
         /// </summary>
         public async FTask<long> DeleteByPatternAsync(string pattern)
         {
@@ -777,7 +777,7 @@ namespace Entities.Redis
 
         public override void Dispose()
         {
-            // 取消所有订阅
+            // Unsubscribe from every tracked channel before disposal.
             UnsubscribeAllAsync().Coroutine();
 
             base.Dispose();

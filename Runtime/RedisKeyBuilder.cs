@@ -4,7 +4,7 @@ using System.Text;
 namespace Entities.Redis
 {
     /// <summary>
-    /// Redis 键命名规范辅助类
+    /// Helper for building Redis keys using a consistent naming convention.
     /// </summary>
     public sealed class RedisKeyBuilder
     {
@@ -12,17 +12,17 @@ namespace Entities.Redis
         private readonly string _separator;
 
         /// <summary>
-        /// 默认键前缀
+        /// Default key prefix.
         /// </summary>
         public const string DefaultPrefix = "entities";
 
         /// <summary>
-        /// 默认分隔符
+        /// Default key separator.
         /// </summary>
         public const string DefaultSeparator = ":";
 
         /// <summary>
-        /// 创建 Redis 键构建器
+        /// Creates a Redis key builder.
         /// </summary>
         public RedisKeyBuilder(string prefix = DefaultPrefix, string separator = DefaultSeparator)
         {
@@ -31,7 +31,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 构建完整的键名
+        /// Builds a full Redis key from the provided parts.
         /// </summary>
         public string Build(params string[] parts)
         {
@@ -54,21 +54,21 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 清理键名中的非法字符
+        /// Removes invalid characters from a key segment.
         /// </summary>
         private string Sanitize(string part)
         {
-            // Redis 键名不应包含空格、换行等特殊字符
+            // Redis keys should not contain spaces, newlines, or other control characters.
             return part.Replace(" ", "_")
                        .Replace("\n", "")
                        .Replace("\r", "")
                        .Replace("\t", "");
         }
 
-        #region 预定义键名模式
+        #region Predefined Key Patterns
 
         /// <summary>
-        /// 实体缓存键: fantasy:entity:{EntityType}:{EntityId}
+        /// Entity cache key: entities:entity:{EntityType}:{EntityId}
         /// </summary>
         public string Entity(string entityType, long entityId)
         {
@@ -76,7 +76,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 实体缓存键: fantasy:entity:{EntityType}:{EntityId}
+        /// Entity cache key: entities:entity:{EntityType}:{EntityId}
         /// </summary>
         public string Entity<T>(long entityId) where T : class
         {
@@ -84,7 +84,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 用户会话缓存键: fantasy:session:{UserId}
+        /// User session key: entities:session:{UserId}
         /// </summary>
         public string Session(long userId)
         {
@@ -92,7 +92,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 在线用户集合键: fantasy:online:users
+        /// Online user set key: entities:online:users
         /// </summary>
         public string OnlineUsers()
         {
@@ -100,7 +100,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 在线用户集合键（按场景）: fantasy:online:scene:{SceneId}
+        /// Online user set key for a scene: entities:online:scene:{SceneId}
         /// </summary>
         public string OnlineScene(uint sceneId)
         {
@@ -108,7 +108,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 分布式锁键: fantasy:lock:{LockName}
+        /// Distributed lock key: entities:lock:{LockName}
         /// </summary>
         public string Lock(string lockName)
         {
@@ -116,7 +116,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 分布式锁键（实体）: fantasy:lock:entity:{EntityType}:{EntityId}
+        /// Entity lock key: entities:lock:entity:{EntityType}:{EntityId}
         /// </summary>
         public string EntityLock<T>(long entityId) where T : class
         {
@@ -124,7 +124,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 分布式锁键（资源）: fantasy:lock:resource:{ResourceType}:{ResourceId}
+        /// Resource lock key: entities:lock:resource:{ResourceType}:{ResourceId}
         /// </summary>
         public string ResourceLock(string resourceType, string resourceId)
         {
@@ -132,7 +132,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 分布式锁键（物品转移）: fantasy:lock:transfer:{FromUserId}:{ToUserId}:{ItemId}
+        /// Transfer lock key: entities:lock:transfer:{FromUserId}:{ToUserId}:{ItemId}
         /// </summary>
         public string TransferLock(long fromUserId, long toUserId, long itemId)
         {
@@ -140,7 +140,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 计数器键: fantasy:counter:{CounterName}
+        /// Counter key: entities:counter:{CounterName}
         /// </summary>
         public string Counter(string counterName)
         {
@@ -148,7 +148,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 每日计数器键: fantasy:counter:daily:{CounterName}:{Date}
+        /// Daily counter key: entities:counter:daily:{CounterName}:{Date}
         /// </summary>
         public string DailyCounter(string counterName, DateTime date)
         {
@@ -156,7 +156,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 排行榜键: fantasy:rank:{RankName}
+        /// Ranking key: entities:rank:{RankName}
         /// </summary>
         public string Rank(string rankName)
         {
@@ -164,7 +164,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 排行榜键（按类型）: fantasy:rank:{RankType}:{RankName}
+        /// Ranking key with type: entities:rank:{RankType}:{RankName}
         /// </summary>
         public string Rank(string rankType, string rankName)
         {
@@ -172,7 +172,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 列表键: fantasy:list:{ListName}
+        /// List key: entities:list:{ListName}
         /// </summary>
         public string List(string listName)
         {
@@ -180,7 +180,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 集合键: fantasy:set:{SetName}
+        /// Set key: entities:set:{SetName}
         /// </summary>
         public string Set(string setName)
         {
@@ -188,7 +188,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 哈希表键: fantasy:hash:{HashName}
+        /// Hash key: entities:hash:{HashName}
         /// </summary>
         public string Hash(string hashName)
         {
@@ -196,7 +196,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 哈希表字段（玩家属性）: fantasy:hash:player:{PlayerId}
+        /// Player hash key: entities:hash:player:{PlayerId}
         /// </summary>
         public string PlayerHash(long playerId)
         {
@@ -204,7 +204,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 消息发布订阅频道: fantasy:channel:{ChannelName}
+        /// Pub/Sub channel key: entities:channel:{ChannelName}
         /// </summary>
         public string Channel(string channelName)
         {
@@ -212,7 +212,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 世界间通信频道: fantasy:channel:world:{FromWorldId}:{ToWorldId}
+        /// Inter-world channel key: entities:channel:world:{FromWorldId}:{ToWorldId}
         /// </summary>
         public string WorldChannel(byte fromWorldId, byte toWorldId)
         {
@@ -220,7 +220,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 场景间通信频道: fantasy:channel:scene:{FromSceneId}:{ToSceneId}
+        /// Inter-scene channel key: entities:channel:scene:{FromSceneId}:{ToSceneId}
         /// </summary>
         public string SceneChannel(uint fromSceneId, uint toSceneId)
         {
@@ -228,7 +228,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 事件发布频道: fantasy:event:{EventName}
+        /// Event channel key: entities:event:{EventName}
         /// </summary>
         public string Event(string eventName)
         {
@@ -236,7 +236,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 限流键: fantasy:ratelimit:{ResourceName}:{Identifier}
+        /// Rate-limit key: entities:ratelimit:{ResourceName}:{Identifier}
         /// </summary>
         public string RateLimit(string resourceName, string identifier)
         {
@@ -244,7 +244,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 用户限流键: fantasy:ratelimit:user:{UserId}:{Action}
+        /// User rate-limit key: entities:ratelimit:user:{UserId}:{Action}
         /// </summary>
         public string UserRateLimit(long userId, string action)
         {
@@ -252,7 +252,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 限流键（IP）: fantasy:ratelimit:ip:{IpAddress}:{Action}
+        /// IP rate-limit key: entities:ratelimit:ip:{IpAddress}:{Action}
         /// </summary>
         public string IpRateLimit(string ipAddress, string action)
         {
@@ -260,7 +260,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 缓存标签键: fantasy:tags:{TagName}
+        /// Cache tag key: entities:tags:{TagName}
         /// </summary>
         public string Tag(string tagName)
         {
@@ -268,7 +268,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// TTL 记录键: fantasy:ttl:{EntityType}:{EntityId}
+        /// TTL tracking key: entities:ttl:{EntityType}:{EntityId}
         /// </summary>
         public string Ttl(string entityType, long entityId)
         {
@@ -276,7 +276,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 缓存预热键: fantasy:warmup:{EntityType}
+        /// Cache warmup key: entities:warmup:{EntityType}
         /// </summary>
         public string Warmup(string entityType)
         {
@@ -284,7 +284,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 自定义键: fantasy:custom:{CustomKey}
+        /// Custom key: entities:custom:{CustomKey}
         /// </summary>
         public string Custom(string customKey)
         {
@@ -293,10 +293,10 @@ namespace Entities.Redis
 
         #endregion
 
-        #region 模式匹配
+        #region Pattern Matching
 
         /// <summary>
-        /// 所有实体键模式: fantasy:entity:*
+        /// Pattern for all entity keys: entities:entity:*
         /// </summary>
         public string EntityPattern()
         {
@@ -304,7 +304,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 特定类型实体键模式: fantasy:entity:{EntityType}:*
+        /// Pattern for entity keys of a specific type: entities:entity:{EntityType}:*
         /// </summary>
         public string EntityPattern<T>() where T : class
         {
@@ -312,7 +312,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 所有锁键模式: fantasy:lock:*
+        /// Pattern for all lock keys: entities:lock:*
         /// </summary>
         public string LockPattern()
         {
@@ -320,7 +320,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 所有会话键模式: fantasy:session:*
+        /// Pattern for all session keys: entities:session:*
         /// </summary>
         public string SessionPattern()
         {
@@ -328,7 +328,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 所有频道模式: fantasy:channel:*
+        /// Pattern for all channel keys: entities:channel:*
         /// </summary>
         public string ChannelPattern()
         {
@@ -336,7 +336,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 自定义模式
+        /// Custom pattern.
         /// </summary>
         public string Pattern(params string[] parts)
         {
@@ -350,12 +350,12 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Redis 键扩展方法
+    /// Extension methods for appending metadata to Redis keys.
     /// </summary>
     public static class RedisKeyExtensions
     {
         /// <summary>
-        /// 添加过期时间后缀（用于记录）
+        /// Adds an expiration suffix, typically for bookkeeping keys.
         /// </summary>
         public static string WithExpiry(this string key, TimeSpan expiry)
         {
@@ -363,7 +363,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 添加时间戳后缀
+        /// Adds a timestamp suffix.
         /// </summary>
         public static string WithTimestamp(this string key, DateTime timestamp)
         {
@@ -371,7 +371,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 添加版本后缀
+        /// Adds a version suffix.
         /// </summary>
         public static string WithVersion(this string key, int version)
         {
@@ -379,7 +379,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 添加分片后缀（用于分片存储）
+        /// Adds a shard suffix for sharded storage.
         /// </summary>
         public static string WithShard(this string key, int shardId)
         {
@@ -387,7 +387,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 根据哈希值计算分片 ID
+        /// Calculates a shard identifier from the key hash.
         /// </summary>
         public static int GetShardId(this string key, int shardCount)
         {
@@ -401,7 +401,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 生成分片键
+        /// Builds a sharded key.
         /// </summary>
         public static string WithSharding(this string key, int shardCount)
         {

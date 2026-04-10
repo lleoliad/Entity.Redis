@@ -8,7 +8,7 @@ using Fantasy.Async;
 namespace Entities.Redis
 {
     /// <summary>
-    /// Redis 连接池管理器
+    /// Manages Redis database instances in a lightweight connection pool.
     /// </summary>
     public sealed class RedisConnectionPool : IDisposable
     {
@@ -18,7 +18,7 @@ namespace Entities.Redis
         private bool _isDisposed;
 
         /// <summary>
-        /// 创建 Redis 连接池
+        /// Creates a Redis connection pool.
         /// </summary>
         public RedisConnectionPool(Scene scene, int maxPoolSize = 10)
         {
@@ -27,7 +27,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取或创建 Redis 连接
+        /// Gets an existing Redis connection or creates one if needed.
         /// </summary>
         public RedisDatabase GetConnection(string connectionString, string dbName)
         {
@@ -43,7 +43,7 @@ namespace Entities.Redis
                 return connection;
             }
 
-            // 检查池大小限制
+            // Warn when the configured pool size has been reached.
             if (_connections.Count >= _maxPoolSize)
             {
                 Log.Warning($"Redis connection pool reached max size: {_maxPoolSize}");
@@ -57,7 +57,7 @@ namespace Entities.Redis
                 return newConnection;
             }
 
-            // 如果添加失败（并发情况），返回现有连接
+            // If the add fails because of a concurrent insert, return the existing instance.
             if (_connections.TryGetValue(key, out connection))
             {
                 newConnection.Dispose();
@@ -69,7 +69,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 移除连接
+        /// Removes a Redis connection from the pool.
         /// </summary>
         public bool RemoveConnection(string connectionString, string dbName)
         {
@@ -78,7 +78,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取当前连接数
+        /// Returns the current number of pooled connections.
         /// </summary>
         public int GetConnectionCount()
         {
@@ -86,20 +86,20 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 清理所有连接
+        /// Clears all pooled connections.
         /// </summary>
         public void Clear()
         {
             foreach (var connection in _connections.Values)
             {
-                // 连接本身不需要特殊清理，FreeRedis 会自动管理
+                // Individual FreeRedis connections do not require extra cleanup here.
             }
 
             _connections.Clear();
         }
 
         /// <summary>
-        /// 释放资源
+        /// Releases pool resources.
         /// </summary>
         public void Dispose()
         {
@@ -113,14 +113,14 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 检查连接是否健康
+        /// Checks whether a pooled connection is healthy.
         /// </summary>
         public async FTask<bool> IsHealthyAsync(string connectionString, string dbName)
         {
             try
             {
                 var connection = GetConnection(connectionString, dbName);
-                // 尝试执行 PING 命令
+                // Try a PING command to verify connectivity.
                 var response = await connection.GetRedisClient().PingAsync("");
                 return !string.IsNullOrEmpty(response);
             }

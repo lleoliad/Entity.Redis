@@ -7,7 +7,7 @@ using Fantasy.Async;
 namespace Entities.Redis
 {
     /// <summary>
-    /// Redis 分布式锁，使用 SET resource_name unique_value NX PX 30000 实现
+    /// Distributed Redis lock built on top of SET NX with expiration semantics.
     /// </summary>
     public sealed class RedisDistributedLock : IAsyncDisposable
     {
@@ -19,17 +19,17 @@ namespace Entities.Redis
         private bool _isDisposed;
 
         /// <summary>
-        /// 是否已获取锁
+        /// Gets whether the lock is currently held.
         /// </summary>
         public bool IsLocked => _isLocked;
 
         /// <summary>
-        /// 锁的键
+        /// Gets the Redis key used for the lock.
         /// </summary>
         public string LockKey => _lockKey;
 
         /// <summary>
-        /// 锁的值（唯一标识）
+        /// Gets the unique lock token stored in Redis.
         /// </summary>
         public string LockValue => _lockValue;
 
@@ -42,13 +42,13 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 尝试获取分布式锁
+        /// Tries to acquire a distributed lock.
         /// </summary>
-        /// <param name="redisDatabase">Redis 数据库实例</param>
-        /// <param name="lockKey">锁的键名</param>
-        /// <param name="expiry">锁的过期时间</param>
-        /// <param name="retryTimeout">重试超时时间，null 表示不重试</param>
-        /// <returns>锁实例，如果获取失败则返回 null</returns>
+        /// <param name="redisDatabase">The Redis database instance.</param>
+        /// <param name="lockKey">The Redis key used for locking.</param>
+        /// <param name="expiry">The lock expiration window.</param>
+        /// <param name="retryTimeout">The retry timeout. Null means no retry.</param>
+        /// <returns>The acquired lock, or null if acquisition failed.</returns>
         public static async FTask<RedisDistributedLock?> AcquireAsync(
             RedisDatabase redisDatabase,
             string lockKey,
@@ -58,7 +58,7 @@ namespace Entities.Redis
             var @lock = new RedisDistributedLock(redisDatabase, lockKey, expiry);
 
             var startTime = DateTime.UtcNow;
-            var retryInterval = TimeSpan.FromMilliseconds(50); // 重试间隔
+            var retryInterval = TimeSpan.FromMilliseconds(50); // Retry interval.
 
             while (true)
             {
@@ -67,7 +67,7 @@ namespace Entities.Redis
                     return @lock;
                 }
 
-                // 检查是否超过重试超时
+                // Stop retrying once the timeout window is exceeded.
                 if (retryTimeout.HasValue)
                 {
                     var elapsed = DateTime.UtcNow - startTime;
@@ -80,12 +80,12 @@ namespace Entities.Redis
                 }
                 else
                 {
-                    // 不重试，直接返回
+                    // Return immediately when retry is disabled.
                     await @lock.DisposeAsync();
                     return null;
                 }
 
-                // 等待一段时间后重试
+                // Wait briefly before the next retry attempt.
                 // await FTask.Delay(retryInterval);
                 // await Task.Delay(retryInterval);
                 await FTask.Wait(redisDatabase.Scene, retryInterval.Microseconds);
@@ -93,7 +93,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 尝试获取锁（单次尝试）
+        /// Attempts to acquire the lock once.
         /// </summary>
         private async FTask<bool> TryAcquireAsync()
         {
@@ -102,7 +102,7 @@ namespace Entities.Redis
                 var redisClient = _redisDatabase.GetRedisClient();
 
                 // SET key value NX EX seconds
-                // 使用 SET NX EX 命令实现分布式锁
+                // Use SET NX EX to implement atomic lock acquisition.
                 var result = await redisClient.SetNxAsync(_lockKey, _lockValue, (int)_expiry.TotalSeconds);
 
                 if (result)
@@ -122,7 +122,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 释放锁
+        /// Releases the lock if it is still owned by this instance.
         /// </summary>
         public async FTask ReleaseAsync()
         {
@@ -135,8 +135,8 @@ namespace Entities.Redis
             {
                 var redisClient = _redisDatabase.GetRedisClient();
 
-                // 使用 Lua 脚本确保只有锁的持有者才能释放锁
-                // 如果锁的值匹配，则删除；否则不删除
+                // Use Lua to ensure that only the lock owner can release the key.
+                // Delete the key only when the stored token matches this lock instance.
                 const string luaScript = @"
                     if redis.call('get', KEYS[1]) == ARGV[1] then
                         return redis.call('del', KEYS[1])
@@ -163,10 +163,10 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 延长锁的过期时间
+        /// Extends the lock expiration while ownership is still valid.
         /// </summary>
-        /// <param name="additionalTime">延长的时长</param>
-        /// <returns>是否延长成功</returns>
+        /// <param name="additionalTime">The additional lifetime to add.</param>
+        /// <returns>True if the lock was extended successfully.</returns>
         public async FTask<bool> ExtendAsync(TimeSpan additionalTime)
         {
             if (!_isLocked)
@@ -178,7 +178,7 @@ namespace Entities.Redis
             {
                 var redisClient = _redisDatabase.GetRedisClient();
 
-                // 使用 Lua 脚本确保只有锁的持有者才能延长锁
+                // Use Lua to ensure that only the lock owner can extend the lock.
                 const string luaScript = @"
                     if redis.call('get', KEYS[1]) == ARGV[1] then
                         return redis.call('expire', KEYS[1], ARGV[2])
@@ -204,7 +204,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 释放资源
+        /// Releases the lock resources.
         /// </summary>
         public async ValueTask DisposeAsync()
         {
@@ -222,7 +222,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 锁的自动续期
+        /// Keeps a lock alive by renewing it periodically.
         /// </summary>
         public sealed class LockRenewal : IDisposable
         {
@@ -232,7 +232,7 @@ namespace Entities.Redis
             private bool _isDisposed;
 
             /// <summary>
-            /// 创建锁续期实例
+            /// Creates a lock renewal helper.
             /// </summary>
             public LockRenewal(RedisDistributedLock @lock, TimeSpan renewalInterval)
             {
@@ -240,7 +240,7 @@ namespace Entities.Redis
                 _renewalInterval = renewalInterval;
                 _cts = new CancellationTokenSource();
 
-                // 启动续期任务
+                // Start the background renewal loop.
                 Task.Run(() => RenewalLoop(_cts.Token));
             }
 
@@ -269,7 +269,7 @@ namespace Entities.Redis
             }
 
             /// <summary>
-            /// 停止续期并释放资源
+            /// Stops lock renewal and releases resources.
             /// </summary>
             public void Dispose()
             {
@@ -285,7 +285,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 使用 await using 语法自动释放锁
+        /// Creates a lock instance for use with `await using`.
         /// </summary>
         public static async FTask<RedisDistributedLock?> CreateAsync(
             RedisDatabase redisDatabase,
@@ -298,17 +298,17 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Redis 分布式锁扩展方法
+    /// Convenience extensions for running code under a Redis distributed lock.
     /// </summary>
     public static class RedisDistributedLockExtensions
     {
         /// <summary>
-        /// 在 using 块中使用分布式锁
+        /// Executes an action within a distributed lock scope.
         /// </summary>
-        /// <param name="cacheComponent">缓存组件</param>
-        /// <param name="lockKey">锁的键名</param>
-        /// <param name="expiry">锁的过期时间</param>
-        /// <param name="action">锁内的操作</param>
+        /// <param name="cacheComponent">The cache component used to access Redis.</param>
+        /// <param name="lockKey">The Redis key used for locking.</param>
+        /// <param name="expiry">The lock expiration window.</param>
+        /// <param name="action">The action executed while holding the lock.</param>
         public static async FTask WithLockAsync(
             this RedisCacheComponent cacheComponent,
             string lockKey,
@@ -326,12 +326,12 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 在 using 块中使用分布式锁（带返回值）
+        /// Executes a function within a distributed lock scope and returns its result.
         /// </summary>
-        /// <param name="cacheComponent">缓存组件</param>
-        /// <param name="lockKey">锁的键名</param>
-        /// <param name="expiry">锁的过期时间</param>
-        /// <param name="func">锁内的操作</param>
+        /// <param name="cacheComponent">The cache component used to access Redis.</param>
+        /// <param name="lockKey">The Redis key used for locking.</param>
+        /// <param name="expiry">The lock expiration window.</param>
+        /// <param name="func">The function executed while holding the lock.</param>
         public static async FTask<T> WithLockAsync<T>(
             this RedisCacheComponent cacheComponent,
             string lockKey,

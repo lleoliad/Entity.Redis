@@ -14,8 +14,8 @@ using FreeRedis;
 namespace Entities.Redis
 {
     /// <summary>
-    /// 使用 Redis 数据库的实现。
-    /// 主要用于缓存层、热点数据存储、分布式锁、发布订阅等场景。
+    /// Redis-backed database implementation.
+    /// Primarily intended for caching, hot data, distributed locks, and pub/sub workloads.
     /// </summary>
     public sealed partial class RedisDatabase : IDatabase
     {
@@ -24,24 +24,24 @@ namespace Entities.Redis
         private readonly HashSet<string> _collections = new HashSet<string>();
 
         /// <summary>
-        /// 获得当前数据的类型
+        /// Gets the database type exposed to the Fantasy database abstraction.
         /// </summary>
         public DatabaseType DatabaseType { get; } = DatabaseType.None; // DatabaseType.Redis;
 
         /// <summary>
-        /// 数据库名字
+        /// Gets the configured database name.
         /// </summary>
         public string Name { get; private set; }
 
         /// <summary>
-        /// 获得对应数据的操作实例
+        /// Gets the underlying database client instance.
         /// </summary>
         public object GetDatabaseInstance => _redisClient;
 
         public Scene Scene => _scene;
 
         /// <summary>
-        /// 初始化 Redis 数据库连接。
+        /// Initializes the Redis database connection.
         /// </summary>
         public IDatabase Initialize(Scene scene, string? connectionString, string dbName)
         {
@@ -50,11 +50,11 @@ namespace Entities.Redis
 
             try
             {
-                // 解析连接字符串
-                // 格式: localhost:6379,defaultDatabase=0,prefix=Fantasy:
+                // Parse the Redis connection string.
+                // Example: localhost:6379,defaultDatabase=0,prefix=Fantasy:
                 RedisClient redisClient = new RedisClient(connectionString);
 
-                // 配置序列化
+                // Configure serialization for object payloads.
                 redisClient.Serialize = obj => MemoryPack.MemoryPackSerializer.Serialize(obj.GetType(), obj);
                 redisClient.DeserializeRaw = (bytes, type) => MemoryPack.MemoryPackSerializer.Deserialize(type, bytes);
                 redisClient.Notice += (s, e) => Console.WriteLine(e.Log); //print command log
@@ -72,7 +72,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取原始 RedisClient 实例，用于执行高级操作
+        /// Returns the raw Redis client for advanced operations.
         /// </summary>
         public IRedisClient GetRedisClient()
         {
@@ -82,7 +82,7 @@ namespace Entities.Redis
         #region Cache Operations - Basic cache operations
 
         /// <summary>
-        /// 获取缓存数据
+        /// Gets a cached value.
         /// </summary>
         public async FTask<T> GetAsync<T>(string key) where T : class
         {
@@ -105,7 +105,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 设置缓存数据
+        /// Stores a cached value.
         /// </summary>
         public async FTask SetAsync<T>(string key, T value, TimeSpan? expiry = null) where T : class
         {
@@ -128,7 +128,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 删除缓存数据
+        /// Deletes one or more cached keys.
         /// </summary>
         public async FTask<long> DeleteAsync(params string[] keys)
         {
@@ -144,7 +144,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 检查键是否存在
+        /// Checks whether a key exists.
         /// </summary>
         public async FTask<bool> ExistsAsync(string key)
         {
@@ -160,7 +160,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 设置过期时间
+        /// Sets the expiration for a key.
         /// </summary>
         public async FTask<bool> ExpireAsync(string key, TimeSpan expire)
         {
@@ -176,7 +176,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取剩余过期时间
+        /// Gets the remaining TTL for a key.
         /// </summary>
         public async FTask<long> TtlAsync(string key)
         {
@@ -195,8 +195,8 @@ namespace Entities.Redis
 
         #region IDatabase Implementation - These are cache-only operations with reduced functionality
 
-        // Redis 作为缓存层，不支持完整的 IDatabase 操作
-        // 这些方法返回默认值或执行空操作
+        // Redis is used here as a cache layer rather than a full persistence store.
+        // The following IDatabase members therefore return defaults or no-op results.
 
         public FTask<long> Count<T>(string? name = null) where T : Entity
         {
@@ -538,7 +538,7 @@ namespace Entities.Redis
         #region String Operations - Additional string operations
 
         /// <summary>
-        /// 自增操作
+        /// Increments a numeric value.
         /// </summary>
         public async FTask<long> IncrByAsync(string key, long value = 1)
         {
@@ -554,7 +554,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 自减操作
+        /// Decrements a numeric value.
         /// </summary>
         public async FTask<long> DecrByAsync(string key, long value = 1)
         {
@@ -570,7 +570,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 字符串追加
+        /// Appends content to a string value.
         /// </summary>
         public async FTask<long> AppendAsync(string key, string value)
         {
@@ -586,7 +586,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取字符串长度
+        /// Gets the length of a string value.
         /// </summary>
         public async FTask<long> StrLenAsync(string key)
         {
@@ -606,7 +606,7 @@ namespace Entities.Redis
         #region Hash Operations - Redis Hash operations
 
         /// <summary>
-        /// 设置 Hash 字段
+        /// Sets a Redis hash field.
         /// </summary>
         public async FTask<bool> HSetAsync<T>(string key, string field, T value) where T : class
         {
@@ -624,7 +624,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取 Hash 字段
+        /// Gets a Redis hash field.
         /// </summary>
         public async FTask<T> HGetAsync<T>(string key, string field) where T : class
         {
@@ -649,7 +649,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 删除 Hash 字段
+        /// Deletes one or more Redis hash fields.
         /// </summary>
         public async FTask<long> HDelAsync(string key, params string[] fields)
         {
@@ -665,7 +665,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 检查 Hash 字段是否存在
+        /// Checks whether a Redis hash field exists.
         /// </summary>
         public async FTask<bool> HExistsAsync(string key, string field)
         {
@@ -681,7 +681,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取所有 Hash 字段
+        /// Gets all field names from a Redis hash.
         /// </summary>
         public async FTask<string[]> HKeysAsync(string key)
         {
@@ -697,7 +697,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取所有 Hash 值
+        /// Gets the number of fields in a Redis hash.
         /// </summary>
         public async FTask<long> HLenAsync(string key)
         {
@@ -717,7 +717,7 @@ namespace Entities.Redis
         #region List Operations - Redis List operations
 
         /// <summary>
-        /// 从列表左侧推入值
+        /// Pushes a value to the left side of a list.
         /// </summary>
         public async FTask<long> LPushAsync<T>(string key, T value) where T : class
         {
@@ -734,7 +734,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 从列表右侧推入值
+        /// Pushes a value to the right side of a list.
         /// </summary>
         public async FTask<long> RPushAsync<T>(string key, T value) where T : class
         {
@@ -751,7 +751,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 从列表左侧弹出值
+        /// Pops a value from the left side of a list.
         /// </summary>
         public async FTask<T> LPopAsync<T>(string key) where T : class
         {
@@ -775,7 +775,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 从列表右侧弹出值
+        /// Pops a value from the right side of a list.
         /// </summary>
         public async FTask<T> RPopAsync<T>(string key) where T : class
         {
@@ -799,7 +799,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取列表长度
+        /// Gets the length of a list.
         /// </summary>
         public async FTask<long> LLenAsync(string key)
         {
@@ -815,7 +815,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取列表指定范围的元素
+        /// Gets a range of values from a list.
         /// </summary>
         public async FTask<List<T>> LRangeAsync<T>(string key, long start = 0, long stop = -1) where T : class
         {
@@ -854,7 +854,7 @@ namespace Entities.Redis
         #region Set Operations - Redis Set operations
 
         /// <summary>
-        /// 向集合添加成员
+        /// Adds a member to a set.
         /// </summary>
         public async FTask<long> SAddAsync<T>(string key, T value) where T : class
         {
@@ -871,7 +871,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取集合所有成员
+        /// Gets all members of a set.
         /// </summary>
         public async FTask<List<T>> SMembersAsync<T>(string key) where T : class
         {
@@ -903,7 +903,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 移除集合成员
+        /// Removes a member from a set.
         /// </summary>
         public async FTask<long> SRemAsync<T>(string key, T value) where T : class
         {
@@ -920,7 +920,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 判断成员是否在集合中
+        /// Checks whether a value is a set member.
         /// </summary>
         public async FTask<bool> SIsMemberAsync<T>(string key, T value) where T : class
         {
@@ -937,7 +937,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取集合成员数
+        /// Gets the number of members in a set.
         /// </summary>
         public async FTask<long> SCardAsync(string key)
         {
@@ -957,7 +957,7 @@ namespace Entities.Redis
         #region Sorted Set Operations - Redis Sorted Set operations
 
         /// <summary>
-        /// 向有序集合添加成员
+        /// Adds a member to a sorted set.
         /// </summary>
         public async FTask<bool> ZAddAsync<T>(string key, T value, double score) where T : class
         {
@@ -975,7 +975,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取有序集合指定范围的成员（按分数升序）
+        /// Gets members from a sorted set range in ascending score order.
         /// </summary>
         public async FTask<List<T>> ZRangeAsync<T>(string key, long start = 0, long stop = -1) where T : class
         {
@@ -1006,7 +1006,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取有序集合指定分数范围的成员
+        /// Gets members from a sorted set within a score range.
         /// </summary>
         public async FTask<List<T>> ZRangeByScoreAsync<T>(string key, double min, double max) where T : class
         {
@@ -1037,7 +1037,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 移除有序集合成员
+        /// Removes a member from a sorted set.
         /// </summary>
         public async FTask<long> ZRemAsync<T>(string key, T value) where T : class
         {
@@ -1054,7 +1054,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取有序集合成员数
+        /// Gets the number of members in a sorted set.
         /// </summary>
         public async FTask<long> ZCardAsync(string key)
         {
@@ -1070,7 +1070,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取成员的分数
+        /// Gets the score of a sorted-set member.
         /// </summary>
         public async FTask<double> ZScoreAsync<T>(string key, T value) where T : class
         {
@@ -1087,7 +1087,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 增加成员的分数
+        /// Increments the score of a sorted-set member.
         /// </summary>
         public async FTask<double> ZIncrByAsync<T>(string key, T value, double increment) where T : class
         {
@@ -1108,7 +1108,7 @@ namespace Entities.Redis
         #region Batch Operations
 
         /// <summary>
-        /// 创建批量操作
+        /// Creates a lightweight Redis batch helper.
         /// </summary>
         public RedisBatch CreateBatch()
         {
@@ -1116,7 +1116,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 执行批量操作
+        /// Executes a batch of queued Redis operations.
         /// </summary>
         public async FTask ExecuteBatchAsync(Action<RedisBatch> batchAction)
         {
@@ -1133,7 +1133,7 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Redis 批量操作
+    /// Lightweight wrapper for batched Redis operations.
     /// </summary>
     public sealed class RedisBatch
     {
@@ -1146,7 +1146,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 添加获取操作
+        /// Adds a get operation to the batch.
         /// </summary>
         public void Get(string key, Action<IRedisObject> callback)
         {
@@ -1158,7 +1158,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 添加设置操作
+        /// Adds a set operation to the batch.
         /// </summary>
         public void Set(string key, byte[] value, TimeSpan? expiry = null)
         {
@@ -1176,7 +1176,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 执行批量操作
+        /// Executes all queued operations.
         /// </summary>
         public async Task ExecuteAsync()
         {
@@ -1190,7 +1190,7 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Redis 对象包装器
+    /// Wrapper around a raw Redis value payload.
     /// </summary>
     public sealed class RedisObject : IRedisObject
     {
@@ -1202,7 +1202,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 获取字节数组
+        /// Returns the raw byte buffer.
         /// </summary>
         public byte[] GetBytes()
         {
@@ -1210,7 +1210,7 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// 反序列化为指定类型
+        /// Deserializes the payload into the requested type.
         /// </summary>
         public T Deserialize<T>() where T : class
         {
@@ -1224,17 +1224,17 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Redis 对象接口
+    /// Contract for a wrapped Redis value.
     /// </summary>
     public interface IRedisObject
     {
         /// <summary>
-        /// 获取字节数组
+        /// Returns the raw byte buffer.
         /// </summary>
         byte[] GetBytes();
 
         /// <summary>
-        /// 反序列化为指定类型
+        /// Deserializes the payload into the requested type.
         /// </summary>
         T Deserialize<T>() where T : class;
     }
