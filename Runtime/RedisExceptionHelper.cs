@@ -99,7 +99,7 @@ namespace Entities.Redis
         /// <summary>
         /// 安全执行 Redis 操作，捕获并记录异常
         /// </summary>
-        public static async FTask<T> SafeExecuteAsync<T>(Func<FTask<T>> operation, string operationName, string? key = null, T defaultValue = default)
+        public static async FTask<T?> SafeExecuteAsync<T>(Func<FTask<T>> operation, string operationName, string? key = null, T? defaultValue = default)
         {
             try
             {
@@ -130,14 +130,14 @@ namespace Entities.Redis
         /// <summary>
         /// 带重试的安全执行
         /// </summary>
-        public static async FTask<T> SafeExecuteWithRetryAsync<T>(
+        public static async FTask<T?> SafeExecuteWithRetryAsync<T>(
             Func<FTask<T>> operation,
             string operationName,
             int maxRetries = 3,
             string? key = null,
-            T defaultValue = default)
+            T? defaultValue = default)
         {
-            Exception lastException = null;
+            Exception? lastException = null;
 
             for (int i = 0; i < maxRetries; i++)
             {
@@ -176,7 +176,7 @@ namespace Entities.Redis
             int maxRetries = 3,
             string? key = null)
         {
-            Exception lastException = null;
+            Exception? lastException = null;
 
             for (int i = 0; i < maxRetries; i++)
             {

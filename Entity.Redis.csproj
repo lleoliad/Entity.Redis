@@ -2,20 +2,20 @@
     
     <PropertyGroup>
         <PackageId>Entity.Redis</PackageId>
-        <PackageVersion>0.0.1</PackageVersion>
+        <PackageVersion>0.1.0</PackageVersion>
         <Title>Entity.Redis</Title>
         <Authors>Lleoliad</Authors>
         <owners>Lleoliad</owners>
         <PackageOutputPath>../../nupkg</PackageOutputPath>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
-        <Description>Entity Redis Suppert.</Description>
+        <Description>Redis support for the Entity/Fantasy server stack.</Description>
         <Copyright>Copyright 2026 Lleoliad</Copyright>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageProjectUrl>https://github.com/lleoliad/Entity.Redis</PackageProjectUrl>
         <RepositoryUrl>https://github.com/lleoliad/Entity.Redis</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        <PackageTags>Net, c#, Server, Game, GameServer, Redis</PackageTags>
+        <PackageTags>Entity, Redis, Cache</PackageTags>
         <AssemblyName>Entity.Redis</AssemblyName>
         <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
         <RootNamespace>Entities.Redis</RootNamespace>
@@ -25,6 +25,8 @@
         <IsPackable>true</IsPackable>
         <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
         <SignAssembly>true</SignAssembly>
+<!--        <IncludeSymbols>true</IncludeSymbols>-->
+<!--        <SymbolPackageFormat>snupkg</SymbolPackageFormat>-->
     </PropertyGroup>
     
     <ItemGroup>
