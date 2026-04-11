@@ -16,12 +16,15 @@ namespace Entities.Redis
     /// </summary>
     public sealed class RedisCacheComponent : Entity
     {
+        private readonly RedisKeyBuilder _defaultRedisKeyBuilder = new RedisKeyBuilder();
         private RedisDatabase _redisDatabase;
         private DatabaseConfig _databaseConfig;
+        private RedisKeyBuilder _redisKeyBuilder;
         private readonly ConcurrentDictionary<string, RedisSubscription> _subscriptions = new();
 
         public RedisDatabase RedisDatabase => _redisDatabase;
         public DatabaseConfig DatabaseConfig => _databaseConfig;
+        public RedisKeyBuilder RedisKeyBuilder {get => _redisKeyBuilder; set => _redisKeyBuilder = value; }
 
         public static async FTask<RedisCacheComponent> Initialize(Scene scene)
         {
@@ -72,6 +75,7 @@ namespace Entities.Redis
         {
             _redisDatabase = redisDatabase;
             _databaseConfig = databaseConfig;
+            _redisKeyBuilder = _defaultRedisKeyBuilder;
             return this;
         }
 
