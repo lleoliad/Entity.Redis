@@ -1,8 +1,22 @@
 # Entity.Redis
 
-`Entity.Redis` extends the `Entity` server stack with Redis-based cache, lock, key-building, and pub/sub capabilities.
+`Entity.Redis` extends the `Entity` server stack with Redis-based cache, distributed lock, key-building, and pub/sub capabilities.
 
 The project is designed for Fantasy/Entity game server scenarios where Redis is used as a cache layer or a coordination component, rather than a full replacement for the primary database.
+
+## NuGet
+
+After the package is published, install it with:
+
+```bash
+dotnet add package Entity.Redis
+```
+
+This package targets:
+
+- `net8.0`
+- `net9.0`
+- `net10.0`
 
 ## Features
 
@@ -40,12 +54,6 @@ Entity.Redis
 - Fantasy/Entity runtime environment
 - Redis server
 - Package dependency: `FreeRedis`
-
-Current target frameworks:
-
-- `net8.0`
-- `net9.0`
-- `net10.0`
 
 ## Installation
 
