@@ -74,7 +74,13 @@ namespace Entities.Redis
         public bool RemoveConnection(string connectionString, string dbName)
         {
             var key = $"{connectionString}|{dbName}";
-            return _connections.TryRemove(key, out _);
+            if (_connections.TryRemove(key, out var connection))
+            {
+                connection.Dispose();
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -92,7 +98,7 @@ namespace Entities.Redis
         {
             foreach (var connection in _connections.Values)
             {
-                // Individual FreeRedis connections do not require extra cleanup here.
+                connection.Dispose();
             }
 
             _connections.Clear();

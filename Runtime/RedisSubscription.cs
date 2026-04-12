@@ -36,6 +36,7 @@ namespace Entities.Redis
             _redisDatabase = redisDatabase;
             _channel = channel;
             _handler = handler;
+            IsSubscribed = true;
 
             var redisClient = _redisDatabase.GetRedisClient();
             _subscription = redisClient.Subscribe(channel, (ch, msg) =>
@@ -81,8 +82,6 @@ namespace Entities.Redis
 
             try
             {
-                var redisClient = _redisDatabase.GetRedisClient();
-
                 // FreeRedis handles the unsubscribe mechanics through disposal.
                 _subscription.Dispose();
 
@@ -137,13 +136,8 @@ namespace Entities.Redis
                 return;
             }
 
+            IsSubscribed = false;
             _isDisposed = true;
-
-            if (IsSubscribed)
-            {
-                UnsubscribeAsync().Coroutine();
-            }
-
             _subscription.Dispose();
         }
     }
@@ -178,6 +172,7 @@ namespace Entities.Redis
             _redisDatabase = redisDatabase;
             _pattern = pattern;
             _handler = handler;
+            IsSubscribed = true;
 
             var redisClient = _redisDatabase.GetRedisClient();
             _subscription = redisClient.PSubscribe(pattern, (ch, msg) =>
@@ -231,13 +226,8 @@ namespace Entities.Redis
                 return;
             }
 
+            IsSubscribed = false;
             _isDisposed = true;
-
-            if (IsSubscribed)
-            {
-                UnsubscribeAsync().Coroutine();
-            }
-
             _subscription.Dispose();
         }
     }
@@ -352,7 +342,7 @@ namespace Entities.Redis
         /// </summary>
         public void Dispose()
         {
-            // FreeRedis automatically cleans up subscriptions during disposal.
+            _isDisposed = true;
         }
     }
 }

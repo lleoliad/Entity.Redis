@@ -21,6 +21,7 @@ namespace Entities.Redis
         private DatabaseConfig _databaseConfig;
         private RedisKeyBuilder _redisKeyBuilder;
         private readonly ConcurrentDictionary<string, RedisSubscription> _subscriptions = new();
+        private bool _ownsRedisDatabase;
 
         public RedisDatabase RedisDatabase => _redisDatabase;
         public DatabaseConfig DatabaseConfig => _databaseConfig;
@@ -65,6 +66,7 @@ namespace Entities.Redis
         {
             var redisDatabase = new RedisDatabase();
             redisDatabase.Initialize(this.Scene, databaseConfig.DbConnection, databaseConfig.DbName);
+            _ownsRedisDatabase = true;
             return Initialize(redisDatabase, databaseConfig);
         }
 
@@ -781,8 +783,17 @@ namespace Entities.Redis
 
         public override void Dispose()
         {
-            // Unsubscribe from every tracked channel before disposal.
-            UnsubscribeAllAsync().Coroutine();
+            foreach (var subscription in _subscriptions.Values)
+            {
+                subscription.Dispose();
+            }
+
+            _subscriptions.Clear();
+
+            if (_ownsRedisDatabase)
+            {
+                _redisDatabase?.Dispose();
+            }
 
             base.Dispose();
         }

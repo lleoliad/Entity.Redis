@@ -171,11 +171,22 @@ Core Redis wrapper implementing `IDatabase`. It exposes cache-oriented methods s
 
 Important: the current implementation is cache-focused. Many full `IDatabase` persistence methods are intentionally reduced or return default values because Redis is treated as a cache layer.
 
+Contract notes:
+
+- `RedisDatabase` keeps `DatabaseType.None` because the upstream `DatabaseType` enum does not currently expose a dedicated Redis member.
+- Unsupported `IDatabase` persistence/query members return completed tasks with empty/default results instead of partially implemented behavior.
+- `Dispose()` now releases the underlying Redis client.
+
 ### `RedisCacheComponent`
 
 Scene component that holds the active `RedisDatabase` instance and provides a higher-level API for cache, string, hash, set, sorted-set, lock, and subscription operations.
 
 Use it when you want Redis access attached to a Fantasy `Scene`.
+
+Lifecycle notes:
+
+- When initialized from `DatabaseConfig`, the component owns the created `RedisDatabase` and disposes it with the component.
+- All tracked subscriptions are disposed during component shutdown.
 
 ### `CacheAside`
 
@@ -208,6 +219,8 @@ Use it for:
 - world-to-world lightweight event fanout
 - cache invalidation messages
 
+Subscription instances are active as soon as they are created, and `Dispose()` immediately tears down the underlying FreeRedis subscription handle.
+
 ### `RedisKeyBuilder`
 
 Provides consistent key construction and predefined patterns for:
@@ -226,6 +239,7 @@ Provides consistent key construction and predefined patterns for:
 - Source files are compiled under the `FANTASY_NET` conditional symbol.
 - Serialization in `RedisDatabase` uses `MemoryPack`.
 - Redis is positioned as an auxiliary data store for cache and coordination; MongoDB or another primary database should still hold durable business data.
+- Do not use `RedisDatabase` as a drop-in replacement for full `IDatabase` persistence/query workflows. Unsupported members intentionally no-op or return empty results.
 - Do not commit production Redis passwords or private endpoints into tracked config files.
 
 ## License
