@@ -70,6 +70,20 @@ Reference the project from your solution or dependent project as needed.
 - `FreeRedis`
 - `../../Entity/Entity.csproj`
 
+## Release
+
+This repository includes a GitHub Actions workflow at `.github/workflows/nuget-release.yml`.
+
+- `workflow_dispatch`: manually builds and packs the NuGet package, then uploads the `.nupkg` artifact
+- `push` on tags matching `v*`: builds and packs the package, then publishes it to NuGet when the `NUGET_API_KEY` repository secret is configured
+
+Recommended release flow:
+
+1. Update `PackageVersion` in `Entity.Redis.csproj`
+2. Commit the version change
+3. Create and push a version tag such as `v0.1.0`
+4. Verify the GitHub Actions run and NuGet publication result
+
 ## Configuration
 
 `RedisCacheComponent.Initialize(Scene scene)` scans the world database configuration and picks the first database entry whose `dbType` is `redis`.
