@@ -11,6 +11,7 @@
         <Description>Redis support for the Entity/Fantasy server stack.</Description>
         <Copyright>Copyright 2026 Lleoliad</Copyright>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageIcon>icon.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageProjectUrl>https://github.com/lleoliad/Entity.Redis</PackageProjectUrl>
         <RepositoryUrl>https://github.com/lleoliad/Entity.Redis</RepositoryUrl>
@@ -38,5 +39,6 @@
         <!-- 包元数据文件 -->
         <None Include="LICENSE" Pack="true" PackagePath="\" />
         <None Include="README.md" Pack="true" PackagePath="\" />
+        <None Include="Assets/icon.png" Pack="true" PackagePath="\" Link="icon.png" />
     </ItemGroup>
 </Project>
