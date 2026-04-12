@@ -61,6 +61,7 @@ namespace Entities.Redis
                 redisClient.Notice += (s, e) => Console.WriteLine(e.Log); //print command log
 
                 _redisClient = redisClient;
+                _isDisposed = false;
 
                 Log.Info($"RedisDatabase initialized successfully: {dbName} @ {connectionString}");
                 return this;

@@ -66,8 +66,7 @@ namespace Entities.Redis
         {
             var redisDatabase = new RedisDatabase();
             redisDatabase.Initialize(this.Scene, databaseConfig.DbConnection, databaseConfig.DbName);
-            _ownsRedisDatabase = true;
-            return Initialize(redisDatabase, databaseConfig);
+            return Initialize(redisDatabase, databaseConfig, true);
         }
 
         /// <summary>
@@ -75,9 +74,15 @@ namespace Entities.Redis
         /// </summary>
         internal RedisCacheComponent Initialize(RedisDatabase redisDatabase, DatabaseConfig databaseConfig)
         {
+            return Initialize(redisDatabase, databaseConfig, false);
+        }
+
+        private RedisCacheComponent Initialize(RedisDatabase redisDatabase, DatabaseConfig databaseConfig, bool ownsRedisDatabase)
+        {
             _redisDatabase = redisDatabase;
             _databaseConfig = databaseConfig;
             _redisKeyBuilder = _defaultRedisKeyBuilder;
+            _ownsRedisDatabase = ownsRedisDatabase;
             return this;
         }
 
