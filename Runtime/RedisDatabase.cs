@@ -58,7 +58,9 @@ namespace Entities.Redis
                 // Configure serialization for object payloads.
                 redisClient.Serialize = obj => MemoryPack.MemoryPackSerializer.Serialize(obj.GetType(), obj);
                 redisClient.DeserializeRaw = (bytes, type) => MemoryPack.MemoryPackSerializer.Deserialize(type, bytes);
+#if ENTITY_DEBUG
                 redisClient.Notice += (s, e) => Console.WriteLine(e.Log); //print command log
+#endif
 
                 _redisClient = redisClient;
                 _isDisposed = false;
