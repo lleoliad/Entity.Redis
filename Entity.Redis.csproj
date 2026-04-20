@@ -37,7 +37,7 @@
     </ItemGroup>
     
     <ItemGroup>
-        <!-- 包元数据文件 -->
+        <!-- package metadata file -->
         <None Include="LICENSE" Pack="true" PackagePath="\" />
         <None Include="README.md" Pack="true" PackagePath="\" />
         <None Include="Assets/icon.png" Pack="true" PackagePath="\" Link="icon.png" />
