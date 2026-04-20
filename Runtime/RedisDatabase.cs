@@ -51,9 +51,7 @@ namespace Entities.Redis
 
             try
             {
-                // Parse the Redis connection string.
-                // Example: localhost:6379,defaultDatabase=0,prefix=Fantasy:
-                RedisClient redisClient = new RedisClient(connectionString);
+                RedisClient redisClient = CreateRedisClient(connectionString);
 
                 // Configure serialization for object payloads.
                 redisClient.Serialize = obj => MemoryPack.MemoryPackSerializer.Serialize(obj.GetType(), obj);
@@ -73,6 +71,49 @@ namespace Entities.Redis
                 Log.Error($"RedisDatabase initialization failed: {dbName} @ {connectionString}\n{e}");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Creates a <see cref="RedisClient"/> from the configured Redis connection string.
+        /// </summary>
+        /// <param name="connectionString">
+        /// Redis connection string configuration.
+        /// <para>Single-node mode example:</para>
+        /// <code>127.0.0.1:6379,defaultDatabase=0,prefix=Fantasy:</code>
+        /// <para>Multi-node or cluster mode uses semicolon-separated node definitions, each node retaining its own FreeRedis options:</para>
+        /// <code>127.0.0.1:7001,defaultDatabase=0,prefix=Fantasy:;127.0.0.1:7002,defaultDatabase=0,prefix=Fantasy:;127.0.0.1:7003,defaultDatabase=0,prefix=Fantasy:</code>
+        /// <para>Initialization rules:</para>
+        /// <list type="bullet">
+        /// <item><description>No semicolon, or only one valid node after parsing: initialize as a standalone Redis client.</description></item>
+        /// <item><description>Two or more valid nodes after parsing: initialize with FreeRedis cluster mode.</description></item>
+        /// </list>
+        /// </param>
+        private static RedisClient CreateRedisClient(string? connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new ArgumentException("Redis connection string cannot be null or empty.", nameof(connectionString));
+            }
+
+            // Split on ';' so callers can provide either:
+            // 1. A standalone node: host:port,option=value
+            // 2. Multiple nodes: host1:port,...;host2:port,...;host3:port,...
+            var connectionNodes = connectionString
+                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(node => !string.IsNullOrWhiteSpace(node))
+                .Select(node => (ConnectionStringBuilder)node)
+                .ToArray();
+
+            if (connectionNodes.Length == 0)
+            {
+                throw new ArgumentException("Redis connection string cannot be null or empty.", nameof(connectionString));
+            }
+
+            // FreeRedis uses different constructors for standalone and cluster topologies,
+            // so the node count determines which initialization path to take.
+            return connectionNodes.Length == 1
+                ? new RedisClient(connectionString.Trim())
+                : new RedisClient(connectionNodes, new Dictionary<string, string>());
         }
 
         /// <summary>
