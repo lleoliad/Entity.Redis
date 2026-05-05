@@ -60,9 +60,9 @@ namespace Entities.Redis
         {
             // Redis keys should not contain spaces, newlines, or other control characters.
             return part.Replace(" ", "_")
-                       .Replace("\n", "")
-                       .Replace("\r", "")
-                       .Replace("\t", "");
+                .Replace("\n", "")
+                .Replace("\r", "")
+                .Replace("\t", "");
         }
 
         #region Predefined Key Patterns
