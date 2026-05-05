@@ -1,45 +1,50 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-    
-    <PropertyGroup>
-        <PackageId>Entity.Redis</PackageId>
-        <PackageVersion>0.1.0</PackageVersion>
-        <Title>Entity.Redis</Title>
-        <Authors>Lleoliad</Authors>
-        <Owners>Lleoliad</Owners>
-        <PackageOutputPath>../../nupkg</PackageOutputPath>
-        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-        <Description>Redis cache, distributed lock, key builder, and pub/sub support for the Entity/Fantasy server stack.</Description>
-        <Copyright>Copyright 2026 Lleoliad</Copyright>
-        <PackageLicenseFile>LICENSE</PackageLicenseFile>
-        <PackageIcon>icon.png</PackageIcon>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageReleaseNotes>Initial public package release with Redis cache access, distributed lock support, key building helpers, and pub/sub integration for Entity/Fantasy projects.</PackageReleaseNotes>
-        <PackageProjectUrl>https://github.com/lleoliad/Entity.Redis</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/lleoliad/Entity.Redis</RepositoryUrl>
-        <RepositoryType>git</RepositoryType>
-        <PackageTags>Entity Redis Fantasy Cache DistributedLock PubSub GameServer</PackageTags>
-        <AssemblyName>Entity.Redis</AssemblyName>
-        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
-        <RootNamespace>Entities.Redis</RootNamespace>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <LangVersion>default</LangVersion>
-        <IsPackable>true</IsPackable>
-        <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-        <SignAssembly>true</SignAssembly>
-<!--        <IncludeSymbols>true</IncludeSymbols>-->
-<!--        <SymbolPackageFormat>snupkg</SymbolPackageFormat>-->
-    </PropertyGroup>
-    
-    <ItemGroup>
-        <ProjectReference Include="..\..\Entity\Entity.csproj"/>
-        <PackageReference Include="FreeRedis" Version="1.5.5"/>
-    </ItemGroup>
-    
-    <ItemGroup>
-        <!-- package metadata file -->
-        <None Include="LICENSE" Pack="true" PackagePath="\" />
-        <None Include="README.md" Pack="true" PackagePath="\" />
-        <None Include="Assets/icon.png" Pack="true" PackagePath="\" Link="icon.png" />
-    </ItemGroup>
+
+  <PropertyGroup>
+    <PackageId>Entity.Redis</PackageId>
+    <PackageVersion>0.1.0</PackageVersion>
+    <Title>Entity.Redis</Title>
+    <Authors>Lleoliad</Authors>
+    <Owners>Lleoliad</Owners>
+    <PackageOutputPath>../../nupkg</PackageOutputPath>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Description>Redis cache, distributed lock, key builder, and pub/sub support for the Entity/Fantasy server stack.</Description>
+    <Copyright>Copyright 2026 Lleoliad</Copyright>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Initial public package release with Redis cache access, distributed lock support, key building helpers, and pub/sub integration for Entity/Fantasy projects.</PackageReleaseNotes>
+    <PackageProjectUrl>https://github.com/lleoliad/Entity.Redis</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/lleoliad/Entity.Redis</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>Entity Redis Fantasy Cache DistributedLock PubSub GameServer</PackageTags>
+    <AssemblyName>Entity.Redis</AssemblyName>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <RootNamespace>Entities.Redis</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>default</LangVersion>
+    <IsPackable>true</IsPackable>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <!-- Strong-name signing requires a key file. CI builds pass -p:SignAssembly=false to skip. -->
+    <SignAssembly>true</SignAssembly>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Entity\Entity.csproj"/>
+    <PackageReference Include="FreeRedis" Version="1.5.5"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- package metadata file -->
+    <None Include="LICENSE" Pack="true" PackagePath="\"/>
+    <None Include="README.md" Pack="true" PackagePath="\"/>
+    <None Include="Assets/icon.png" Pack="true" PackagePath="\" Link="icon.png"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EditorConfigFiles Remove=".editorconfig"/>
+  </ItemGroup>
 </Project>

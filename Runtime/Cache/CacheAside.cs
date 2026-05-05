@@ -67,11 +67,11 @@ namespace Entities.Redis
                     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
                     if (value != null)
                     {
-                        _statistics.HitCount++;
+                        _statistics.IncrementHit();
                     }
                     else
                     {
-                        _statistics.MissCount++;
+                        _statistics.IncrementMiss();
                     }
                 }
 
@@ -80,7 +80,7 @@ namespace Entities.Redis
             catch (Exception e)
             {
                 Log.Error($"CacheAside GetAsync failed: key={key}, error={e.Message}");
-                _statistics.MissCount++;
+                _statistics.IncrementMiss();
                 return null;
             }
         }
@@ -102,14 +102,14 @@ namespace Entities.Redis
                 {
                     // Cache a dedicated marker to represent a null payload.
                     await _redisCache.SetAsync(key, new NullValuePlaceholder(), effectiveExpiry);
-                    _statistics.SetCount++;
+                    _statistics.IncrementSet();
                     return;
                 }
 
 #pragma warning disable CS8634 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'class' constraint.
                 await _redisCache.SetAsync(key, value, effectiveExpiry);
 #pragma warning restore CS8634 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'class' constraint.
-                _statistics.SetCount++;
+                _statistics.IncrementSet();
             }
             catch (Exception e)
             {
@@ -127,7 +127,7 @@ namespace Entities.Redis
             try
             {
                 var count = await _redisCache.DeleteAsync(keys);
-                _statistics.DeleteCount += (int)count;
+                _statistics.IncrementDelete(count);
                 return count;
             }
             catch (Exception e)
@@ -199,19 +199,15 @@ namespace Entities.Redis
                 return new Dictionary<string, T>();
             }
 
-            var result = new Dictionary<string, T>();
-
-            foreach (var key in keys)
+            try
             {
-                var value = await GetAsync<T>(key);
-                // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-                if (value != null)
-                {
-                    result[key] = value;
-                }
+                return await _redisCache.GetManyAsync<T>(keys);
             }
-
-            return result;
+            catch (Exception e)
+            {
+                Log.Error($"CacheAside GetManyAsync failed: keys={string.Join(",", keys)}, error={e.Message}");
+                return new Dictionary<string, T>();
+            }
         }
 
         public async FTask SetManyAsync<T>(Dictionary<string, T> items, TimeSpan? expiry = null) where T : class
@@ -222,9 +218,15 @@ namespace Entities.Redis
                 return;
             }
 
-            foreach (var kvp in items)
+            try
             {
-                await SetAsync(kvp.Key, kvp.Value, expiry);
+                var effectiveExpiry = expiry ?? _options.DefaultExpiry;
+                await _redisCache.SetManyAsync(items, effectiveExpiry);
+                _statistics.IncrementSet(items.Count);
+            }
+            catch (Exception e)
+            {
+                Log.Error($"CacheAside SetManyAsync failed: count={items?.Count}, error={e.Message}");
             }
         }
 
@@ -237,13 +239,7 @@ namespace Entities.Redis
 
             try
             {
-                var keys = await _redisCache.KeysAsync(pattern);
-                if (keys.Count == 0)
-                {
-                    return 0;
-                }
-
-                return await _redisCache.DeleteAsync(keys.ToArray());
+                return await _redisCache.DeleteByPatternAsync(pattern);
             }
             catch (Exception e)
             {

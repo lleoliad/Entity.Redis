@@ -85,10 +85,7 @@ namespace Entities.Redis
                     return null;
                 }
 
-                // Wait briefly before the next retry attempt.
-                // await FTask.Delay(retryInterval);
-                // await Task.Delay(retryInterval);
-                await FTask.Wait(redisDatabase.Scene, retryInterval.Microseconds);
+                await FTask.Wait(redisDatabase.Scene, retryInterval.Milliseconds);
             }
         }
 

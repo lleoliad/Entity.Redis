@@ -387,8 +387,11 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// Calculates a shard identifier from the key hash.
+        /// Calculates a stable shard identifier from the key.
         /// </summary>
+        /// <remarks>
+        /// Uses a deterministic hash so keys map consistently across processes and restarts.
+        /// </remarks>
         public static int GetShardId(this string key, int shardCount)
         {
             if (shardCount <= 0)
@@ -396,8 +399,26 @@ namespace Entities.Redis
                 return 0;
             }
 
-            var hash = key.GetHashCode();
+            var hash = GetStableHash(key);
             return Math.Abs(hash) % shardCount;
+        }
+
+        private static int GetStableHash(string key)
+        {
+            // FNV-1a hash — deterministic across .NET runtimes and processes.
+            const uint fnvPrime = 16777619;
+            const uint offsetBasis = 2166136261;
+
+            uint hash = offsetBasis;
+            foreach (char c in key)
+            {
+                hash ^= (byte)(c & 0xFF);
+                hash *= fnvPrime;
+                hash ^= (byte)(c >> 8);
+                hash *= fnvPrime;
+            }
+
+            return unchecked((int)hash);
         }
 
         /// <summary>

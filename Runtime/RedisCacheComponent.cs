@@ -164,6 +164,34 @@ namespace Entities.Redis
         }
 
         /// <summary>
+        /// Gets multiple cached values in a single round-trip.
+        /// </summary>
+        public async FTask<Dictionary<string, T>> GetManyAsync<T>(string[] keys) where T : class
+        {
+            if (_redisDatabase == null)
+            {
+                Log.Warning("RedisDatabase is not initialized, returning empty dictionary for GetMany operation");
+                return new Dictionary<string, T>();
+            }
+
+            return await _redisDatabase.GetManyAsync<T>(keys);
+        }
+
+        /// <summary>
+        /// Stores multiple cached values in a single round-trip.
+        /// </summary>
+        public async FTask SetManyAsync<T>(Dictionary<string, T> items, TimeSpan? expiry = null) where T : class
+        {
+            if (_redisDatabase == null)
+            {
+                Log.Warning("RedisDatabase is not initialized, skipping SetMany operation");
+                return;
+            }
+
+            await _redisDatabase.SetManyAsync(items, expiry);
+        }
+
+        /// <summary>
         /// Gets the remaining TTL in seconds.
         /// </summary>
         public async FTask<long> TtlAsync(string key)
@@ -692,6 +720,12 @@ namespace Entities.Redis
                 return null;
             }
 
+            // Dispose any existing subscription on the same channel.
+            if (_subscriptions.TryRemove(channel, out var existing))
+            {
+                existing.Dispose();
+            }
+
             var subscription = new RedisSubscription(_redisDatabase, channel, (ch, msg) => { handler(ch, System.Text.Encoding.UTF8.GetString(msg)); });
 
             _subscriptions[channel] = subscription;
@@ -709,6 +743,12 @@ namespace Entities.Redis
             {
                 Log.Warning("RedisDatabase is not initialized, returning null for SubscribeBytes operation");
                 return null;
+            }
+
+            // Dispose any existing subscription on the same channel.
+            if (_subscriptions.TryRemove(channel, out var existing))
+            {
+                existing.Dispose();
             }
 
             var subscription = new RedisSubscription(_redisDatabase, channel, handler);
@@ -771,20 +811,49 @@ namespace Entities.Redis
         }
 
         /// <summary>
-        /// Deletes all keys that match the specified pattern.
+        /// Deletes all keys that match the specified pattern using SCAN to avoid blocking.
         /// </summary>
         public async FTask<long> DeleteByPatternAsync(string pattern)
         {
-            var keys = await KeysAsync(pattern);
-            if (keys.Count == 0)
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+            if (_redisDatabase == null)
             {
+                Log.Warning("RedisDatabase is not initialized, returning 0 for DeleteByPattern operation");
                 return 0;
             }
 
-            return await DeleteAsync(keys.ToArray());
+            try
+            {
+                // Use SCAN instead of KEYS to avoid blocking Redis under large keyspaces.
+                var keys = await _redisDatabase.ScanKeysAsync(pattern);
+                if (keys.Count == 0)
+                {
+                    return 0;
+                }
+
+                return await _redisDatabase.DeleteAsync(keys.ToArray());
+            }
+            catch (Exception e)
+            {
+                Log.Error($"Redis DeleteByPatternAsync failed: pattern={pattern}, error={e.Message}");
+                return 0;
+            }
         }
 
         #endregion
+
+        /// <summary>
+        /// Performs a health check against the underlying Redis connection.
+        /// </summary>
+        public async FTask<RedisHealthCheck> HealthCheckAsync()
+        {
+            if (_redisDatabase == null)
+            {
+                return RedisHealthCheck.Unhealthy("RedisDatabase is not initialized");
+            }
+
+            return await _redisDatabase.HealthCheckAsync();
+        }
 
         public override void Dispose()
         {

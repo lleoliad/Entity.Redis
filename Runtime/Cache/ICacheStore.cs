@@ -1,4 +1,5 @@
 #if FANTASY_NET
+using System.Threading;
 using Fantasy.Async;
 using Fantasy.Entitas;
 
@@ -211,44 +212,78 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Tracks cache usage statistics.
+    /// Tracks cache usage statistics with atomic counters for thread safety.
     /// </summary>
     public sealed class CacheStatistics
     {
-        /// <summary>
-        /// Gets or sets the cache hit count.
-        /// </summary>
-        public long HitCount { get; set; }
+        private long _hitCount;
+        private long _missCount;
+        private long _setCount;
+        private long _deleteCount;
 
         /// <summary>
-        /// Gets or sets the cache miss count.
+        /// Gets the cache hit count.
         /// </summary>
-        public long MissCount { get; set; }
+        public long HitCount => Interlocked.Read(ref _hitCount);
+
+        /// <summary>
+        /// Gets the cache miss count.
+        /// </summary>
+        public long MissCount => Interlocked.Read(ref _missCount);
 
         /// <summary>
         /// Gets the cache hit rate.
         /// </summary>
-        public double HitRate => HitCount + MissCount > 0 ? (double)HitCount / (HitCount + MissCount) : 0;
+        public double HitRate
+        {
+            get
+            {
+                var hits = Interlocked.Read(ref _hitCount);
+                var misses = Interlocked.Read(ref _missCount);
+                var total = hits + misses;
+                return total > 0 ? (double)hits / total : 0;
+            }
+        }
 
         /// <summary>
-        /// Gets or sets the number of cache set operations.
+        /// Gets the number of cache set operations.
         /// </summary>
-        public long SetCount { get; set; }
+        public long SetCount => Interlocked.Read(ref _setCount);
 
         /// <summary>
-        /// Gets or sets the number of cache delete operations.
+        /// Gets the number of cache delete operations.
         /// </summary>
-        public long DeleteCount { get; set; }
+        public long DeleteCount => Interlocked.Read(ref _deleteCount);
+
+        /// <summary>
+        /// Increments the hit counter.
+        /// </summary>
+        public void IncrementHit() => Interlocked.Increment(ref _hitCount);
+
+        /// <summary>
+        /// Increments the miss counter.
+        /// </summary>
+        public void IncrementMiss() => Interlocked.Increment(ref _missCount);
+
+        /// <summary>
+        /// Increments the set counter by the specified amount.
+        /// </summary>
+        public void IncrementSet(long count = 1) => Interlocked.Add(ref _setCount, count);
+
+        /// <summary>
+        /// Increments the delete counter by the specified amount.
+        /// </summary>
+        public void IncrementDelete(long count = 1) => Interlocked.Add(ref _deleteCount, count);
 
         /// <summary>
         /// Resets all counters.
         /// </summary>
         public void Reset()
         {
-            HitCount = 0;
-            MissCount = 0;
-            SetCount = 0;
-            DeleteCount = 0;
+            Interlocked.Exchange(ref _hitCount, 0);
+            Interlocked.Exchange(ref _missCount, 0);
+            Interlocked.Exchange(ref _setCount, 0);
+            Interlocked.Exchange(ref _deleteCount, 0);
         }
 
         /// <summary>

@@ -129,17 +129,13 @@ namespace Entities.Redis
             return _redisClient;
         }
 
-        private static async FTask UnsupportedTask(string operation)
-        {
-            Log.Warning($"Redis as cache layer does not support {operation}. Use the primary database for persistence/query workloads.");
-            await FTask.CompletedTask;
-        }
+        private static FTask ThrowNotSupportedTask(string operation)
+            => throw new NotSupportedException(
+                $"Redis as cache layer does not support {operation}. Use the primary database (MongoDB) for persistence/query workloads.");
 
-        private static FTask<T> UnsupportedResult<T>(string operation, T fallback)
-        {
-            Log.Warning($"Redis as cache layer does not support {operation}. Use the primary database for persistence/query workloads.");
-            return FTask<T>.FromResult(fallback);
-        }
+        private static FTask<T> ThrowNotSupportedResult<T>(string operation)
+            => throw new NotSupportedException(
+                $"Redis as cache layer does not support {operation}. Use the primary database (MongoDB) for persistence/query workloads.");
 
         #region Cache Operations - Basic cache operations
 
@@ -253,322 +249,357 @@ namespace Entities.Redis
             }
         }
 
+        /// <summary>
+        /// Gets multiple cached values in a single round-trip using MGET.
+        /// </summary>
+        public async FTask<Dictionary<string, T>> GetManyAsync<T>(string[] keys) where T : class
+        {
+            var result = new Dictionary<string, T>();
+            if (keys == null || keys.Length == 0)
+            {
+                return result;
+            }
+
+            try
+            {
+                var values = await _redisClient.MGetAsync(keys);
+                for (int i = 0; i < keys.Length && i < values.Length; i++)
+                {
+                    if (values[i] is T value && value != null)
+                    {
+                        result[keys[i]] = value;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error($"Redis GetManyAsync failed: keys={string.Join(",", keys)}, error={e.Message}");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Stores multiple cached values using MSET (without expiry) or individual SetEx calls.
+        /// </summary>
+        public async FTask SetManyAsync<T>(Dictionary<string, T> items, TimeSpan? expiry = null) where T : class
+        {
+            if (items == null || items.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                if (expiry.HasValue)
+                {
+                    foreach (var kvp in items)
+                    {
+                        await _redisClient.SetExAsync(kvp.Key, (int)expiry.Value.TotalSeconds, kvp.Value);
+                    }
+                }
+                else
+                {
+                    await _redisClient.MSetAsync(items);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error($"Redis SetManyAsync failed: count={items.Count}, error={e.Message}");
+            }
+        }
+
         #endregion
 
-        #region IDatabase Implementation - These are cache-only operations with reduced functionality
+        #region IDatabase Implementation - Persistence/query operations are explicitly unsupported
 
         // Redis is used here as a cache layer rather than a full persistence store.
-        // The following IDatabase members therefore return defaults or no-op results.
+        // The following IDatabase members throw NotSupportedException to fail fast instead of returning silent defaults.
 
         public FTask<long> Count<T>(string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support Count operation");
-            return FTask<long>.FromResult(0L);
+            return ThrowNotSupportedResult<long>("Count operation");
         }
 
         public FTask<long> Count<T>(Expression<Func<T, bool>> filter, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support Count with filter operation");
-            return FTask<long>.FromResult(0L);
+            return ThrowNotSupportedResult<long>("Count with filter operation");
         }
 
         public FTask<bool> Exist<T>(string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support Exist operation");
-            return FTask<bool>.FromResult(false);
+            return ThrowNotSupportedResult<bool>("Exist operation");
         }
 
         public FTask<bool> Exist<T>(Expression<Func<T, bool>> filter, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support Exist with filter operation");
-            return FTask<bool>.FromResult(false);
+            return ThrowNotSupportedResult<bool>("Exist with filter operation");
         }
 
         public FTask<T> QueryNotLock<T>(long id, bool isDeserialize = false, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support QueryNotLock operation. Use MongoDB for persistent queries.");
-            return FTask<T>.FromResult(null);
+            return ThrowNotSupportedResult<T>("QueryNotLock operation");
         }
 
         public FTask<T> Query<T>(long id, bool isDeserialize = false, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support Query operation. Use MongoDB for persistent queries.");
-            return FTask<T>.FromResult(null);
+            return ThrowNotSupportedResult<T>("Query operation");
         }
 
         public FTask<(int count, List<T> dates)> QueryCountAndDatesByPage<T>(Expression<Func<T, bool>> filter, int pageIndex,
             int pageSize, bool isDeserialize = false, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support QueryCountAndDatesByPage operation");
-            return FTask<(int count, List<T> dates)>.FromResult((0, new List<T>()));
+            return ThrowNotSupportedResult<(int count, List<T> dates)>("QueryCountAndDatesByPage");
         }
 
         public FTask<(int count, List<T> dates)> QueryCountAndDatesByPage<T>(Expression<Func<T, bool>> filter, int pageIndex,
             int pageSize, string[] cols, bool isDeserialize = false, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support QueryCountAndDatesByPage with cols operation");
-            return FTask<(int count, List<T> dates)>.FromResult((0, new List<T>()));
+            return ThrowNotSupportedResult<(int count, List<T> dates)>("QueryCountAndDatesByPage with cols");
         }
 
         public FTask<List<T>> QueryByPage<T>(Expression<Func<T, bool>> filter, int pageIndex, int pageSize,
             bool isDeserialize = false, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support QueryByPage operation");
-            return FTask<List<T>>.FromResult(new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryByPage");
         }
 
         public FTask<List<T>> QueryByPage<T>(Expression<Func<T, bool>> filter, int pageIndex, int pageSize, string[] cols,
             bool isDeserialize = false, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support QueryByPage with cols operation");
-            return FTask<List<T>>.FromResult(new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryByPage with cols");
         }
 
         public FTask<List<T>> QueryByPageOrderBy<T>(Expression<Func<T, bool>> filter, int pageIndex, int pageSize,
             Expression<Func<T, object>> orderByExpression, bool isAsc = true, bool isDeserialize = false,
             string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support QueryByPageOrderBy operation");
-            return FTask<List<T>>.FromResult(new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryByPageOrderBy");
         }
 
         public FTask<T?> First<T>(Expression<Func<T, bool>> filter, bool isDeserialize = false, string? name = null)
             where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support First operation");
-            return FTask<T?>.FromResult(null);
+            return ThrowNotSupportedResult<T?>("First operation");
         }
 
         public FTask<T> First<T>(string json, string[] cols, bool isDeserialize = false, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support First with json operation");
-            return FTask<T>.FromResult(null);
+            return ThrowNotSupportedResult<T>("First with json");
         }
 
         public FTask<List<T>> QueryOrderBy<T>(Expression<Func<T, bool>> filter, Expression<Func<T, object>> orderByExpression,
             bool isAsc = true, bool isDeserialize = false, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support QueryOrderBy operation");
-            return FTask<List<T>>.FromResult(new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryOrderBy");
         }
 
         public FTask<List<T>> Query<T>(Expression<Func<T, bool>> filter, bool isDeserialize = false, string? name = null)
             where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support Query operation");
-            return FTask<List<T>>.FromResult(new List<T>());
+            return ThrowNotSupportedResult<List<T>>("Query");
         }
 
         public FTask<List<T>> Query<T>(Expression<Func<T, bool>> filter, Expression<Func<T, object>>[] cols,
             bool isDeserialize = false, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support Query with cols operation");
-            return FTask<List<T>>.FromResult(new List<T>());
+            return ThrowNotSupportedResult<List<T>>("Query with cols");
         }
 
         public FTask Query(long id, List<string> collectionNames, List<Entity> result, bool isDeserialize = false)
         {
-            return UnsupportedTask("multi-collection Query operation");
+            return ThrowNotSupportedTask("multi-collection Query operation");
         }
 
         public FTask<List<T>> QueryJson<T>(string json, bool isDeserialize = false, string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support QueryJson operation");
-            return FTask<List<T>>.FromResult(new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryJson");
         }
 
         public FTask<List<T>> QueryJson<T>(string json, string[] cols, bool isDeserialize = false, string? name = null)
             where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support QueryJson with cols operation");
-            return FTask<List<T>>.FromResult(new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryJson with cols");
         }
 
         public FTask<List<T>> QueryJson<T>(long taskId, string json, bool isDeserialize = false, string? name = null)
             where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support QueryJson with taskId operation");
-            return FTask<List<T>>.FromResult(new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryJson with taskId");
         }
 
         public FTask<List<T>> Query<T>(Expression<Func<T, bool>> filter, string[] cols, bool isDeserialize = false,
             string? name = null) where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support Query with cols operation");
-            return FTask<List<T>>.FromResult(new List<T>());
+            return ThrowNotSupportedResult<List<T>>("Query with filter and cols");
         }
 
         public FTask Save<T>(T entity, string? name = null) where T : Entity
         {
-            return UnsupportedTask("Save operation");
+            return ThrowNotSupportedTask("Save operation");
         }
 
         public FTask Save(long id, List<(Entity, string)> entities)
         {
-            return UnsupportedTask("batch Save operation");
+            return ThrowNotSupportedTask("batch Save operation");
         }
 
         public FTask Save<T>(object transactionSession, T entity, string? name = null) where T : Entity
         {
-            return UnsupportedTask("Save with transaction operation");
+            return ThrowNotSupportedTask("Save with transaction operation");
         }
 
         public FTask Insert<T>(T entity, string? name = null) where T : Entity, new()
         {
-            return UnsupportedTask("Insert operation");
+            return ThrowNotSupportedTask("Insert operation");
         }
 
         public FTask InsertBatch<T>(IEnumerable<T> list, string? name = null) where T : Entity, new()
         {
-            return UnsupportedTask("InsertBatch operation");
+            return ThrowNotSupportedTask("InsertBatch operation");
         }
 
         public FTask InsertBatch<T>(object transactionSession, IEnumerable<T> list, string? name = null) where T : Entity, new()
         {
-            return UnsupportedTask("InsertBatch with transaction operation");
+            return ThrowNotSupportedTask("InsertBatch with transaction operation");
         }
 
         public FTask<long> Remove<T>(object transactionSession, long id, string? name = null) where T : Entity, new()
         {
-            Log.Warning("Redis as cache layer does not support Remove with transaction operation");
-            return FTask<long>.FromResult(0L);
+            return ThrowNotSupportedResult<long>("Remove with transaction operation");
         }
 
         public FTask<long> Remove<T>(long id, string? name = null) where T : Entity, new()
         {
-            Log.Warning("Redis as cache layer does not support Remove operation");
-            return FTask<long>.FromResult(0L);
+            return ThrowNotSupportedResult<long>("Remove operation");
         }
 
         public FTask<long> Remove<T>(long coroutineLockQueueKey, object transactionSession, Expression<Func<T, bool>> filter,
             string? name = null) where T : Entity, new()
         {
-            Log.Warning("Redis as cache layer does not support Remove with filter operation");
-            return FTask<long>.FromResult(0L);
+            return ThrowNotSupportedResult<long>("Remove with filter operation");
         }
 
         public FTask<long> Remove<T>(long coroutineLockQueueKey, Expression<Func<T, bool>> filter, string? name = null)
             where T : Entity, new()
         {
-            Log.Warning("Redis as cache layer does not support Remove with filter operation");
-            return FTask<long>.FromResult(0L);
+            return ThrowNotSupportedResult<long>("Remove with filter operation");
         }
 
         public FTask<long> Sum<T>(Expression<Func<T, bool>> filter, Expression<Func<T, object>> sumExpression, string? name = null)
             where T : Entity
         {
-            Log.Warning("Redis as cache layer does not support Sum operation");
-            return FTask<long>.FromResult(0L);
+            return ThrowNotSupportedResult<long>("Sum operation");
         }
 
         public FTask CreateIndex<T>(string collection, params object[] keys) where T : Entity
         {
-            return UnsupportedTask("CreateIndex operation");
+            return ThrowNotSupportedTask("CreateIndex operation");
         }
 
         public FTask CreateIndex<T>(params object[] keys) where T : Entity
         {
-            return UnsupportedTask("CreateIndex operation");
+            return ThrowNotSupportedTask("CreateIndex operation");
         }
 
         public FTask CreateIndex<T>(object[] keys, object[] options) where T : Entity
         {
-            return UnsupportedTask("CreateIndex operation");
+            return ThrowNotSupportedTask("CreateIndex operation");
         }
 
         public FTask CreateDB<T>() where T : Entity
         {
-            return UnsupportedTask("CreateDB operation");
+            return ThrowNotSupportedTask("CreateDB operation");
         }
 
         public FTask CreateDB(Type type)
         {
-            return UnsupportedTask("CreateDB operation");
+            return ThrowNotSupportedTask("CreateDB operation");
         }
 
         public FTask<T> QueryNotLock<T>(long id, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult<T>("QueryNotLock operation", null);
+            return ThrowNotSupportedResult<T>("QueryNotLock operation");
         }
 
         public FTask<T> Query<T>(long id, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult<T>("Query operation", null);
+            return ThrowNotSupportedResult<T>("Query operation");
         }
 
         public FTask<(int count, List<T> dates)> QueryCountAndDatesByPage<T>(Expression<Func<T, bool>> filter, int pageIndex, int pageSize, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("(count, dates) QueryCountAndDatesByPage operation", (0, new List<T>()));
+            return ThrowNotSupportedResult<(int count, List<T> dates)>("QueryCountAndDatesByPage");
         }
 
         public FTask<(int count, List<T> dates)> QueryCountAndDatesByPage<T>(Expression<Func<T, bool>> filter, int pageIndex, int pageSize, string[] cols, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("(count, dates) QueryCountAndDatesByPage with cols operation", (0, new List<T>()));
+            return ThrowNotSupportedResult<(int count, List<T> dates)>("QueryCountAndDatesByPage with cols");
         }
 
         public FTask<List<T>> QueryByPage<T>(Expression<Func<T, bool>> filter, int pageIndex, int pageSize, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("QueryByPage operation", new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryByPage");
         }
 
         public FTask<List<T>> QueryByPage<T>(Expression<Func<T, bool>> filter, int pageIndex, int pageSize, string[] cols, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("QueryByPage with cols operation", new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryByPage with cols");
         }
 
         public FTask<List<T>> QueryByPageOrderBy<T>(Expression<Func<T, bool>> filter, int pageIndex, int pageSize, Expression<Func<T, object>> orderByExpression, bool isAsc = true, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("QueryByPageOrderBy operation", new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryByPageOrderBy");
         }
 
         public FTask<T?> First<T>(Expression<Func<T, bool>> filter, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult<T?>("First operation", null);
+            return ThrowNotSupportedResult<T?>("First operation");
         }
 
         public FTask<T> First<T>(string json, string[] cols, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult<T>("First with json operation", null);
+            return ThrowNotSupportedResult<T>("First with json");
         }
 
         public FTask<List<T>> QueryOrderBy<T>(Expression<Func<T, bool>> filter, Expression<Func<T, object>> orderByExpression, bool isAsc = true, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("QueryOrderBy operation", new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryOrderBy");
         }
 
         public FTask<List<T>> Query<T>(Expression<Func<T, bool>> filter, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("Query operation", new List<T>());
+            return ThrowNotSupportedResult<List<T>>("Query");
         }
 
         public FTask<List<T>> Query<T>(Expression<Func<T, bool>> filter, Expression<Func<T, object>>[] cols, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("Query with cols operation", new List<T>());
+            return ThrowNotSupportedResult<List<T>>("Query with cols");
         }
 
         public FTask Query(long id, List<string> collectionNames, List<Entity> result, bool isDeserialize = false, Scene? scene = null)
         {
-            return UnsupportedTask("multi-collection Query operation");
+            return ThrowNotSupportedTask("multi-collection Query operation");
         }
 
         public FTask<List<T>> QueryJson<T>(string json, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("QueryJson operation", new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryJson");
         }
 
         public FTask<List<T>> QueryJson<T>(string json, string[] cols, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("QueryJson with cols operation", new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryJson with cols");
         }
 
         public FTask<List<T>> QueryJson<T>(long taskId, string json, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("QueryJson with taskId operation", new List<T>());
+            return ThrowNotSupportedResult<List<T>>("QueryJson with taskId");
         }
 
         public FTask<List<T>> Query<T>(Expression<Func<T, bool>> filter, string[] cols, bool isDeserialize = false, string? name = null, Scene? scene = null) where T : Entity
         {
-            return UnsupportedResult("Query with cols operation", new List<T>());
+            return ThrowNotSupportedResult<List<T>>("Query with cols");
         }
 
         #endregion
@@ -1002,7 +1033,7 @@ namespace Entities.Redis
             try
             {
                 var bytes = MemoryPack.MemoryPackSerializer.Serialize(value);
-                await _redisClient.ZAddAsync(key, (decimal)score, System.Text.Encoding.UTF8.GetString(bytes));
+                await _redisClient.ZAddAsync(key, (decimal)score, Convert.ToBase64String(bytes));
                 return true;
             }
             catch (Exception e)
@@ -1019,14 +1050,15 @@ namespace Entities.Redis
         {
             try
             {
-                var bytesList = await _redisClient.ZRangeAsync(key, start, stop);
+                var members = await _redisClient.ZRangeAsync(key, start, stop);
                 var result = new List<T>();
 
-                foreach (var bytes in bytesList)
+                foreach (var member in members)
                 {
-                    if (bytes != null && bytes.Length > 0)
+                    if (member is string s)
                     {
-                        var item = MemoryPack.MemoryPackSerializer.Deserialize<T>((byte[])typeof(byte[]).FromObject(bytes));
+                        var decoded = Convert.FromBase64String(s);
+                        var item = MemoryPack.MemoryPackSerializer.Deserialize<T>(decoded);
                         if (item != null)
                         {
                             result.Add(item);
@@ -1050,14 +1082,15 @@ namespace Entities.Redis
         {
             try
             {
-                var bytesList = await _redisClient.ZRangeByScoreAsync(key, (decimal)min, (decimal)max);
+                var members = await _redisClient.ZRangeByScoreAsync(key, (decimal)min, (decimal)max);
                 var result = new List<T>();
 
-                foreach (var bytes in bytesList)
+                foreach (var member in members)
                 {
-                    if (bytes != null && bytes.Length > 0)
+                    if (member is string s)
                     {
-                        var item = MemoryPack.MemoryPackSerializer.Deserialize<T>((byte[])typeof(byte[]).FromObject(bytes));
+                        var decoded = Convert.FromBase64String(s);
+                        var item = MemoryPack.MemoryPackSerializer.Deserialize<T>(decoded);
                         if (item != null)
                         {
                             result.Add(item);
@@ -1082,7 +1115,7 @@ namespace Entities.Redis
             try
             {
                 var bytes = MemoryPack.MemoryPackSerializer.Serialize(value);
-                return await _redisClient.ZRemAsync(key, System.Text.Encoding.UTF8.GetString(bytes));
+                return await _redisClient.ZRemAsync(key, Convert.ToBase64String(bytes));
             }
             catch (Exception e)
             {
@@ -1115,7 +1148,7 @@ namespace Entities.Redis
             try
             {
                 var bytes = MemoryPack.MemoryPackSerializer.Serialize(value);
-                return (double)((await _redisClient.ZScoreAsync(key, System.Text.Encoding.UTF8.GetString(bytes)))!);
+                return (double)((await _redisClient.ZScoreAsync(key, Convert.ToBase64String(bytes)))!);
             }
             catch (Exception e)
             {
@@ -1132,7 +1165,7 @@ namespace Entities.Redis
             try
             {
                 var bytes = MemoryPack.MemoryPackSerializer.Serialize(value);
-                return (double)(await _redisClient.ZIncrByAsync(key, (decimal)increment, System.Text.Encoding.UTF8.GetString(bytes)));
+                return (double)(await _redisClient.ZIncrByAsync(key, (decimal)increment, Convert.ToBase64String(bytes)));
             }
             catch (Exception e)
             {
@@ -1143,20 +1176,54 @@ namespace Entities.Redis
 
         #endregion
 
+        /// <summary>
+        /// Returns keys matching a pattern using the SCAN command to avoid blocking.
+        /// </summary>
+        public async FTask<List<string>> ScanKeysAsync(string pattern, int count = 100)
+        {
+            try
+            {
+                var keys = new List<string>();
+                long cursor = 0;
+
+                do
+                {
+                    var result = await _redisClient.ScanAsync(cursor, pattern, count, string.Empty);
+                    cursor = result.cursor;
+                    if (result.items != null)
+                    {
+                        keys.AddRange(result.items);
+                    }
+                }
+                while (cursor != 0);
+
+                return keys;
+            }
+            catch (Exception e)
+            {
+                Log.Error($"Redis ScanKeysAsync failed: pattern={pattern}, error={e.Message}");
+                return new List<string>();
+            }
+        }
+
         #region Batch Operations
 
         /// <summary>
-        /// Creates a lightweight Redis batch helper.
+        /// Creates a sequential Redis batch helper.
         /// </summary>
-        public RedisBatch CreateBatch()
+        /// <remarks>
+        /// Operations are executed one at a time. For true atomicity or pipelining,
+        /// use FreeRedis transactions or pipelines directly via <see cref="GetRedisClient"/>.
+        /// </remarks>
+        public RedisSequentialBatch CreateBatch()
         {
-            return new RedisBatch(_redisClient);
+            return new RedisSequentialBatch(_redisClient);
         }
 
         /// <summary>
-        /// Executes a batch of queued Redis operations.
+        /// Executes a sequential batch of queued Redis operations.
         /// </summary>
-        public async FTask ExecuteBatchAsync(Action<RedisBatch> batchAction)
+        public async FTask ExecuteBatchAsync(Action<RedisSequentialBatch> batchAction)
         {
             var batch = CreateBatch();
             batchAction(batch);
@@ -1164,6 +1231,30 @@ namespace Entities.Redis
         }
 
         #endregion
+
+        /// <summary>
+        /// Performs a lightweight health check against the Redis connection.
+        /// </summary>
+        public async FTask<RedisHealthCheck> HealthCheckAsync()
+        {
+            if (_isDisposed)
+            {
+                return RedisHealthCheck.Unhealthy("RedisDatabase is disposed");
+            }
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                await _redisClient.PingAsync();
+                sw.Stop();
+                return RedisHealthCheck.Healthy(sw.ElapsedMilliseconds);
+            }
+            catch (Exception e)
+            {
+                sw.Stop();
+                return RedisHealthCheck.Unhealthy(e.Message);
+            }
+        }
 
         public void Dispose()
         {
@@ -1182,14 +1273,19 @@ namespace Entities.Redis
     }
 
     /// <summary>
-    /// Lightweight wrapper for batched Redis operations.
+    /// Lightweight wrapper for sequential batched Redis operations.
     /// </summary>
-    public sealed class RedisBatch
+    /// <remarks>
+    /// Operations are executed one at a time in the order they are queued.
+    /// This is not a Redis pipeline or transaction — each command is a separate network round-trip.
+    /// For true pipelining, access the raw <see cref="IRedisClient"/> via <see cref="RedisDatabase.GetRedisClient"/>.
+    /// </remarks>
+    public sealed class RedisSequentialBatch
     {
         private readonly IRedisClient _redisClient;
         private readonly List<Func<Task>> _operations = new List<Func<Task>>();
 
-        internal RedisBatch(IRedisClient redisClient)
+        internal RedisSequentialBatch(IRedisClient redisClient)
         {
             _redisClient = redisClient;
         }
